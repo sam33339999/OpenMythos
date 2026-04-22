@@ -167,6 +167,7 @@ Key design choices:
 |---|---|
 | [`docs/open_mythos.md`](docs/open_mythos.md) | Full API reference for the `OpenMythos` class — constructor, `forward`, `generate`, all sub-modules, configuration reference, and usage examples |
 | [`docs/datasets.md`](docs/datasets.md) | Recommended training datasets with token budget guidance per model size |
+| [`docs/copilot/`](docs/copilot/) | **Beginner's guide (中文)** — plain-language walkthroughs of the architecture, inference logic, and step-by-step setup for newcomers |
 
 ---
 

@@ -607,7 +607,8 @@ OpenMythos/
 │   └── 3b_fine_web_edu.py  # 3B 模型訓練腳本
 ├── docs/
 │   ├── open_mythos.md   # 完整 API 文件
-│   └── datasets.md      # 訓練資料集建議
+│   ├── datasets.md      # 訓練資料集建議
+│   └── copilot/         # 新手入門白話教學（中文）
 ├── example.py           # 快速使用範例
 ├── variants_example.py  # 模型變體範例
 └── README.md            # 英文說明文件
@@ -653,7 +654,17 @@ model.eval()
 
 ## 📖 延伸閱讀
 
-| 論文 | 說明 |
+### 新手教學文件
+
+| 文件 | 說明 |
+|---|---|
+| [`docs/copilot/README.md`](docs/copilot/README.md) | 新手入門導覽，從這裡開始 |
+| [`docs/copilot/01-what-is-openmythos.md`](docs/copilot/01-what-is-openmythos.md) | 白話解說 OpenMythos 是什麼 |
+| [`docs/copilot/02-how-it-thinks.md`](docs/copilot/02-how-it-thinks.md) | 它的推論機制是什麼？ |
+| [`docs/copilot/03-getting-started.md`](docs/copilot/03-getting-started.md) | 安裝與第一個範例 |
+| [`docs/copilot/04-train-your-first-model.md`](docs/copilot/04-train-your-first-model.md) | 訓練你的第一個模型 |
+
+### 技術論文
 |---|---|
 | [Loop, Think, & Generalize (2025)](https://arxiv.org/pdf/2604.07822) | 循環深度 Transformer 的推理能力 |
 | [Parcae — Scaling Laws (Prairie et al., 2026)](https://arxiv.org/abs/2604.12946) | 穩定循環語言模型的縮放律 |
