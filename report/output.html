@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenMythos 與 OpenRouter Fusion：迴圈深度與多模型審議研究報告</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+  <style>
+    /* PingFang（macOS 系統中文 fallback）無法嵌入列印 PDF，
+       中文一律明確指定可嵌入字型，禁止落到 system-ui / 裸 sans-serif */
+    :root {
+      --ink: #1a1a1a;
+      --ink-light: #555;
+      --rule: #c9c9c9;
+      --accent: #1e4e79;
+      --bg-code: #f5f5f3;
+      --font-main: 'Noto Sans TC', 'Heiti TC', 'Arial Unicode MS', 'Microsoft JhengHei', sans-serif;
+      --font-display: 'Noto Serif TC', 'Songti TC', 'Noto Sans TC', 'Heiti TC', serif;
+      --font-mono: 'SF Mono', 'Consolas', 'Noto Sans TC', 'Heiti TC', monospace;
+    }
+    @page { size: A4; margin: 20mm 18mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-main);
+      font-size: 10.5pt;
+      line-height: 1.85;
+      color: var(--ink);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media screen {
+      body { max-width: 760px; margin: 3rem auto; padding: 0 1.5rem; }
+    }
+
+    /* 文件頭 */
+    .doc-header { border-bottom: 3px solid var(--ink); padding-bottom: 1.2rem; margin-bottom: 0.4rem; }
+    .doc-kicker { font-size: 8.5pt; letter-spacing: 0.35em; color: var(--ink-light); margin-bottom: 0.6rem; }
+    .doc-header h1 { font-family: var(--font-display); font-size: 21pt; font-weight: 700; line-height: 1.4; }
+    .doc-meta { display: flex; gap: 2.5rem; border-bottom: 1px solid var(--rule); padding: 0.5rem 0; margin-bottom: 2rem; font-size: 8.5pt; color: var(--ink-light); }
+    .doc-meta b { color: var(--ink); font-weight: 500; margin-left: 0.5em; }
+
+    /* 章節 */
+    section { margin-bottom: 2.2rem; }
+    h2 {
+      font-size: 13pt; font-weight: 700;
+      border-left: 4px solid var(--accent);
+      padding-left: 0.7rem;
+      margin-bottom: 0.9rem;
+    }
+    h3 { font-size: 11pt; font-weight: 500; color: var(--accent); margin: 1.3rem 0 0.5rem; }
+    p { margin-bottom: 0.7rem; text-align: justify; }
+    ul, ol { padding-left: 1.6rem; margin-bottom: 0.7rem; }
+    li { margin-bottom: 0.25rem; }
+
+    /* 表格：細水平線，無斑馬紋 */
+    table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1rem; font-size: 9.5pt; }
+    th { text-align: left; font-weight: 500; border-bottom: 2px solid var(--ink); padding: 0.4rem 0.6rem; }
+    td { border-bottom: 1px solid var(--rule); padding: 0.45rem 0.6rem; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* 程式碼 */
+    pre, code { font-family: var(--font-mono); font-size: 8.5pt; }
+    pre { background: var(--bg-code); padding: 0.9rem 1.1rem; margin: 0.8rem 0; line-height: 1.6; white-space: pre-wrap; }
+    code { background: var(--bg-code); padding: 0.1em 0.35em; }
+
+    /* 重點框 */
+    .note { border: 1px solid var(--ink); padding: 0.7rem 1rem; margin: 1rem 0; font-size: 9.5pt; }
+    .note > b:first-child { display: block; font-size: 8.5pt; letter-spacing: 0.2em; margin-bottom: 0.25rem; }
+
+    /* 圖表 */
+    figure { margin: 1rem 0; }
+    figure svg { width: 100%; height: auto; max-height: 110mm; }
+    figcaption { font-size: 8.5pt; color: var(--ink-light); margin-top: 0.35rem; text-align: center; }
+
+    /* 中英對照術語標記 */
+    .term { font-weight: 500; }
+    .en { color: var(--ink-light); font-size: 9pt; }
+
+    /* 分頁控制 */
+    section, table, pre, .note, figure { break-inside: avoid; }
+    h2, h3 { break-after: avoid; }
+
+    /* ── 格線系統：多欄版面 ────────────── */
+    :root { --gap: 5mm; }
+    .cols-2   { display: grid; grid-template-columns: 1fr 1fr;     gap: var(--gap); }
+    .cols-3   { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--gap); }
+    .cols-2-1 { display: grid; grid-template-columns: 2fr 1fr;     gap: var(--gap); }
+    .cols-1-2 { display: grid; grid-template-columns: 1fr 2fr;     gap: var(--gap); }
+    .cols-2, .cols-3, .cols-2-1, .cols-1-2 {
+      align-items: start;
+      break-inside: avoid;
+      margin-bottom: 1.2rem;
+    }
+    .cols-2 > *, .cols-3 > *, .cols-2-1 > *, .cols-1-2 > * { min-width: 0; }
+    .cols-2 figure svg { max-height: 80mm; }
+  </style>
+</head>
+<body>
+
+<!-- PAGE: 01-cover -->
+<div class="doc-page">
+<header class="doc-header">
+  <p class="doc-kicker">技術研究報告 · TECHNICAL RESEARCH REPORT</p>
+  <h1>OpenMythos 與 OpenRouter Fusion<br>迴圈深度推理與多模型審議之研究</h1>
+</header>
+<div class="doc-meta">
+  <span>文件編號<b>RR-2026-001</b></span>
+  <span>版本<b>v1.0</b></span>
+  <span>日期<b>2026-07-08</b></span>
+  <span>範圍<b>架構 × 理論 × 設計</b></span>
+</div>
+
+<main>
+  <section>
+    <h2>研究主軸</h2>
+    <p>本報告系統性整理 <span class="term">OpenMythos</span>（一個以 Python + PyTorch 實作的<span class="term">迴圈深度 Transformer</span><span class="en">（Recurrent-Depth Transformer, RDT）</span>研究函式庫）與 <span class="term">OpenRouter Fusion</span><span class="en">（一套多模型審議機制）</span>的完整研究成果，共 21 篇循序漸進的研究筆記，回答一個核心問題：</p>
+    <div class="note">
+      <b>中心論題</b>
+      如何在大型語言模型<span class="en">（LLM）</span>架構中建構「Mythos 式」的響應與回授（recurrence / feedback）機制——把「同一個模型反覆運算」的深度推理，與「多個模型並行、再由判斷模型收斂」的多模型審議，做系統化對照，並延伸出一份「如何從零開始打造此類機制」的設計藍圖。
+    </div>
+  </section>
+
+  <section>
+    <h2>四大部結構</h2>
+    <table>
+      <thead>
+        <tr><th>部</th><th>主題</th><th>涵蓋篇數</th><th>核心內容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Part I</td><td>OpenMythos 迴圈深度架構</td><td class="num">10 篇</td><td>從專案總覽、三階段架構到 KV 快取生成的完整拆解</td></tr>
+        <tr><td>Part II</td><td>OpenRouter Fusion 多模型審議</td><td class="num">5 篇</td><td>五階段管線、三種入口、結構化分析與遞迴保護</td></tr>
+        <tr><td>Part III</td><td>回授機制的理論與整合</td><td class="num">5 篇</td><td>LTI 動態系統數學、機制映射、擴展與穩定性</td></tr>
+        <tr><td>Part IV</td><td>設計文件</td><td class="num">1 篇</td><td>從零打造 Mythos 式回授 LLM 的完整設計藍圖</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>證據來源聲明</h2>
+    <p>本報告所有主張皆附可追溯證據。OpenMythos 程式碼以 <code>檔案:行號</code> 標注，來自本倉庫實際原始碼；OpenRouter API 引用官方文件 URL（已實際抓取確認 HTTP 200）；第三方論文引用 ArXiv 並標注於專案中的出處。術語一律以<span class="term">中英對照</span>方式標注，方便讀者對照原始文獻。</p>
+    <div class="note">
+      <b>閱讀建議</b>
+      全文以「不失真」為原則整理原始研究筆記。第一個遇到的英文術語會以括號標注原文，文末附完整中英對照詞彙表（見第 3 章）。建議依序閱讀：Part I 建立技術地基 → Part II 引入對照機制 → Part III 做理論整合 → Part IV 收斂為設計藍圖。
+    </div>
+  </section>
+</main>
+</div>
+<!-- /PAGE: 01-cover -->
+<!-- PAGE: 02-summary -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>執行摘要</h2>
+  <p>本研究的核心張力，是兩種層級迥異、卻目標相似的收斂機制：<span class="term">單模型反覆運算</span>（OpenMythos 迴圈深度）與<span class="term">多模型並行審議</span>（OpenRouter Fusion）。兩者都在解同一個問題——「如何用多次計算換取更好的單一答案」，但「多次」的單位完全不同。</p>
+  <div class="note">
+    <b>一句話結論</b>
+    Mythos 在單一模型的連續潛在空間裡反覆運算，深度可外推、成本幾乎免費、靠譜半徑 ρ(A)&lt;1 構造性保證收斂；Fusion 在多個模型之間透過自然語言協調，審議限於單層、成本線性增長、靠遞迴保護與三級降級容錯。兩者不是二選一的對立，而是同一個設計空間的兩個極點。
+  </div>
+</section>
+
+<section>
+  <h2>OpenMythos：深度來自「同一組權重跑很多次」</h2>
+  <p>OpenMythos 是對 Claude Mythos 模型架構的「理論重構」（<span class="en">theoretical reconstruction</span>），純粹基於公開研究與推測，不附屬於也不受 Anthropic 背書。它實作的核心假設是：<span class="term">Claude Mythos 疑似是一個 RDT</span>——與其堆疊數百層獨特層，它把其中一部分層回收、在同一個前向傳遞中跑多次。相同的權重、更多的迴圈、更深的思考。</p>
+  <p>關鍵在於這<b>不是 chain-of-thought（CoT，思維鏈）</b>。過程中沒有中間 token 輸出，所有推理都在單一次前向傳遞裡、於連續潛在空間<span class="en">（continuous latent space）</span>中「沉默地」完成。此假設有四條支撐論證：</p>
+  <table>
+    <thead>
+      <tr><th>論證</th><th>意涵</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>系統化泛化<span class="en">（systematic generalization）</span></td><td>迴圈 Transformer 能處理訓練時沒見過的知識組合；能力是「相變」式出現</td></tr>
+      <tr><td>深度外推<span class="en">（depth extrapolation）</span></td><td>訓練 5 步推理、測試 10 步仍能成功——靠推理期跑更多迴圈</td></tr>
+      <tr><td>潛在思考 = 隱式 CoT</td><td>每個迴圈約等於一步 CoT，但在連續空間進行；可同時編碼多條路徑</td></tr>
+      <tr><td>無參數爆炸<span class="en">（no parameter blow-up）</span></td><td>k 層跑 L 次可達 kL 層品質，但參數量只有 k 層</td></tr>
+    </tbody>
+  </table>
+  <p>架構採三階段分工：<span class="term">前奏</span><span class="en">（Prelude）</span>→ <span class="term">迴圈區塊</span><span class="en">（Recurrent Block）</span>→ <span class="term">尾奏</span><span class="en">（Coda）</span>。其核心更新規則為 <code>h_{t+1} = A·h_t + B·e + Transformer(h_t, e)</code>，其中凍結的編碼輸入 <code>e</code> 在每個迴圈以 <code>B·e</code> 重新注入，防止隱藏狀態漂移。</p>
+</section>
+
+<section>
+  <h2>OpenRouter Fusion：廣度來自「多個異質模型並行」</h2>
+  <p>Fusion 是一個伺服器端工具<span class="en">（server tool）</span>，任何模型都可呼叫。被呼叫時，一組模型（panel，最多 8 個）並行回答，附帶網路搜尋能力；一個判斷模型（judge）<b>比對而非合併</b><span class="en">（compares, not merges）</span>它們的回應，產出結構化 JSON（共識／矛盾／洞見／盲區），最後由你的模型（outer）撰寫最終答案。</p>
+  <div class="note">
+    <b>關鍵設計決定</b>
+    Fusion 被「設計成單層」——遞迴保護（recursion guard）禁止 panel 與 judge 再呼叫自己。每次呼叫帶 <code>x-openrouter-fusion-depth</code> header 標記深度，plugin 拒絕第二次注入。這與 Mythos「鼓勵無限加迴圈」形成最尖銳對比：連續空間靠穩定性條件自然收斂可深，離散呼叫空間成本指數成長必須淺。
+  </div>
+</section>
+
+<section>
+  <h2>研究收斂：設計空間的兩個極點</h2>
+  <p>經過理論整合，本研究提出「<span class="term">疊代收斂器</span>」<span class="en">（iterative convergence operator）</span>的統一抽象，把兩者都視為「把外部視角融進推理狀態」的收斂算子。Part IV 的設計文件綜合全部證據，回答：「如果我要從零打造一個具備 Mythos 式響應與回授的 LLM，該從哪裡開始、要做哪些決定？」每一條設計建議都回指前篇證據，確保可追溯、可驗證。</p>
+</section>
+</div>
+<!-- /PAGE: 02-summary -->
+<!-- PAGE: 03-glossary -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>中英對照詞彙表</h2>
+  <p>本表收錄本報告使用的核心術語，以中英對照標注，便於讀者對照原始文獻與程式碼。術語分為架構、注意力、穩定性、Fusion、理論五大類。原文術語於正文中首次出現時以括號標注。</p>
+</section>
+
+<section>
+  <h2>架構與迴圈核心</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文原文</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>迴圈深度 Transformer</td><td>Recurrent-Depth Transformer (RDT)</td><td>又稱 Looped Transformer；將部分層回收、同一前向傳遞中跑多次</td></tr>
+      <tr><td>前奏</td><td>Prelude</td><td>迴圈前的標準 Transformer 區塊，產生凍結注入源 e</td></tr>
+      <tr><td>迴圈區塊</td><td>Recurrent Block</td><td>單一共享權重反覆運算 T 次，架構的心臟</td></tr>
+      <tr><td>尾奏</td><td>Coda</td><td>迴圈後的標準區塊，把潛在狀態映射回輸出空間</td></tr>
+      <tr><td>隱藏狀態</td><td>hidden state (h)</td><td>殘差流中的表示，每個迴圈被更新</td></tr>
+      <tr><td>凍結編碼輸入</td><td>frozen encoded input (e)</td><td>Prelude 結束時凍結的表示，每個迴圈以 B·e 注入</td></tr>
+      <tr><td>連續潛在空間</td><td>continuous latent space</td><td>隱藏狀態所在的高維空間，推理在此「沉默地」完成</td></tr>
+      <tr><td>深度外推</td><td>depth extrapolation</td><td>推理時 n_loops 可超過訓練值 max_loop_iters</td></tr>
+      <tr><td>權重共享</td><td>weight tying / sharing</td><td>LM head 與嵌入表共享權重；迴圈區塊共享同一組權重</td></tr>
+      <tr><td>模型變體</td><td>model variants</td><td>mythos_1b … mythos_1t 共七個預設尺度</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>注意力與前饋</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文原文</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>多潛在注意力</td><td>Multi-Latent Attention (MLA)</td><td>DeepSeek-V2 風格；壓縮 KV 潛在，快取小 10–20×</td></tr>
+      <tr><td>分組查詢注意力</td><td>Grouped Query Attention (GQA)</td><td>query 頭多於 KV 頭，靠共享省快取</td></tr>
+      <tr><td>旋轉位置編碼</td><td>Rotary Position Embedding (RoPE)</td><td>對 Q、K 套用，在寫入 KV 快取<b>之前</b></td></tr>
+      <tr><td>KV 快取</td><td>KV cache</td><td>把已算過的鍵值存下，把解碼成本從 O(T²) 降到 O(T)</td></tr>
+      <tr><td>快取鍵</td><td>cache_key</td><td>字串鍵區分各層與各迴圈深度，避免碰撞</td></tr>
+      <tr><td>混合專家前饋</td><td>Mixture-of-Experts FFN (MoE)</td><td>DeepSeekMoE；細粒度路由專家＋共享專家</td></tr>
+      <tr><td>路由專家</td><td>routed experts</td><td>每 token 由 router 選 top-K 個稀疏啟動</td></tr>
+      <tr><td>共享專家</td><td>shared experts</td><td>恆啟動，吸收跨領域共用知識</td></tr>
+      <tr><td>門控線性單元</td><td>SwiGLU / gated FFN</td><td>down(silu(gate(x)) * up(x))，稠密 FFN 與個別專家的積木</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="cols-2">
+<section>
+  <h2>穩定性與調適</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文</th></tr></thead>
+    <tbody>
+      <tr><td>線性非時變注入</td><td>LTI Injection</td></tr>
+      <tr><td>譜半徑</td><td>spectral radius ρ(A)</td></tr>
+      <tr><td>零階保持離散化</td><td>Zero-Order Hold (ZOH)</td></tr>
+      <tr><td>構造性保證</td><td>constructive guarantee</td></tr>
+      <tr><td>自適應計算時間</td><td>Adaptive Computation Time (ACT)</td></tr>
+      <tr><td>剩餘機率技巧</td><td>remainder trick</td></tr>
+      <tr><td>迴圈索引嵌入</td><td>loop index embedding</td></tr>
+      <tr><td>深度 LoRA 適配器</td><td>LoRA Adapter</td></tr>
+      <tr><td>夾值／箝制</td><td>clamp</td></tr>
+      <tr><td>過度思考</td><td>overthinking</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Fusion 與理論</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文</th></tr></thead>
+    <tbody>
+      <tr><td>多模型審議</td><td>multi-model deliberation</td></tr>
+      <tr><td>面板（並行模型組）</td><td>panel</td></tr>
+      <tr><td>判斷模型</td><td>judge</td></tr>
+      <tr><td>外層模型</td><td>outer model</td></tr>
+      <tr><td>結構化分析</td><td>structured analysis</td></tr>
+      <tr><td>共識／矛盾／洞見／盲區</td><td>consensus / contradictions / insights / blind_spots</td></tr>
+      <tr><td>降級處理</td><td>graceful degradation</td></tr>
+      <tr><td>遞迴保護</td><td>recursion guard</td></tr>
+      <tr><td>測試時計算擴展</td><td>test-time scaling</td></tr>
+      <tr><td>疊代收斂器</td><td>iterative convergence operator</td></tr>
+      <tr><td>BIBO 穩定</td><td>bounded-input bounded-output</td></tr>
+      <tr><td>擴展定律</td><td>scaling laws</td></tr>
+    </tbody>
+  </table>
+</section>
+</div>
+
+<div class="note">
+  <b>使用方式</b>
+  正文中首次出現的術語以「中文（English）」標注，例如「迴圈深度 Transformer（Recurrent-Depth Transformer, RDT）」。程式碼識別字（類別名、欄位名）保留原文，如 <code>MythosConfig</code>、<code>n_loops</code>、<code>LTIInjection</code>。
+</div>
+</div>
+<!-- /PAGE: 03-glossary -->
+<!-- PAGE: 04-overview -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>Part I 緒論：OpenMythos 專案與迴圈深度架構</h2>
+  <p>Part I（對應原始研究第 1–10 篇）完整覆蓋 OpenMythos 的運行與架構。本章先建立研究對象與核心假設，後續各章沿資料流逐一拆解三階段架構、穩定性、注意力、MoE、迴圈分化、ACT 與生成。</p>
+</section>
+
+<section>
+  <h2>1. 這是什麼專案</h2>
+  <p>OpenMythos 是一個 <span class="term">Python + PyTorch</span> 的研究函式庫，試圖「理論重構」<span class="en">（theoretical reconstruction）</span>Claude Mythos 模型的架構。套件目錄為 <code>open_mythos</code>（底線），發布名為 <code>open-mythos</code>（連字號）。它實作的是一種<span class="term">迴圈深度 Transformer</span><span class="en">（RDT）</span>，又稱 Looped Transformer，純粹基於公開研究與推測的社群重構。</p>
+  <p>它的核心假設（<span class="en">The Central Hypothesis</span>）：Claude Mythos 疑似是一個 RDT。與其堆疊數百層獨特層，它把其中一部分層回收、在同一個前向傳遞中跑多次。關鍵差異在於這<b>不是 chain-of-thought</b>——過程中沒有中間 token 輸出，所有推理都在單一次前向傳遞裡、於連續潛在空間中「沉默地」完成。</p>
+</section>
+
+<section>
+  <h2>2. 程式碼的事實地圖</h2>
+  <table>
+    <thead><tr><th>檔案</th><th>角色</th><th>關鍵類別</th></tr></thead>
+    <tbody>
+      <tr><td><code>open_mythos/main.py</code></td><td><b>正典實作</b>，所有公開匯出來自此處</td><td>OpenMythos, MythosConfig, RecurrentBlock, LTIInjection, ACTHalting, MoEFFN, MLAttention, GQAttention, LoRAAdapter, RMSNorm</td></tr>
+      <tr><td><code>open_mythos/variants.py</code></td><td>預設尺度變體</td><td>mythos_1b … mythos_1t（共 7 個）</td></tr>
+      <tr><td><code>open_mythos/tokenizer.py</code></td><td>HF 分詞器包裝</td><td>MythosTokenizer（預設 openai/gpt-oss-20b）</td></tr>
+      <tr><td><code>open_mythos/moda.py</code></td><td><b>獨立的實驗性</b> MoDA 模型</td><td>未被 <code>__init__.py</code> 匯出，不接在 OpenMythos 上</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <b>必須記住的已知瑕疵</b>
+    <code>open_mythos/__init__.py</code> 把 <code>load_tokenizer</code> 與 <code>get_vocab_size</code> 列入 <code>__all__</code>，但從未匯入或定義它們——<code>from open_mythos import load_tokenizer</code> 會直接 <code>ImportError</code>。研究與設計時不應依賴這兩個名字。此外 <code>main.py</code> 與 <code>moda.py</code> 是兩套平行實作，不可混為一談；本研究聚焦在正典的 <code>main.py</code>。
+  </div>
+</section>
+
+<section>
+  <h2>3. 三階段架構總覽</h2>
+  <p><code>OpenMythos</code> 類別（<code>main.py:899-924</code>）將運算分成三個功能區塊：</p>
+  <pre><code>[Prelude 前奏]   — prelude_layers 個標準 TransformerBlock，只跑一次
+      ↓
+[Recurrent Block]— 同一個 TransformerBlock 迴圈 T 次，每次注入 e
+      ↑_______↓    h_{t+1} = A·h_t + B·e + Transformer(h_t, e)
+      ↓
+[Coda 尾奏]      — coda_layers 個標準 TransformerBlock，只跑一次
+      ↓
+輸出 logits</code></pre>
+  <p>更新規則中，<code>e</code> 是 Prelude 結束後被<b>凍結</b>的編碼輸入，在每一個迴圈步都重新注入，用來防止隱藏狀態隨深度漂移。這個「持續注入原訊號」的設計，正是本系列後半對照 OpenRouter Fusion「整合」機制時的核心錨點（見 Part III 第 17 篇映射）。</p>
+</section>
+</div>
+<!-- /PAGE: 04-overview -->
+<!-- PAGE: 05-architecture -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>4. 三階段資料流：Prelude → Recurrent → Coda</h2>
+  <p><code>OpenMythos.forward</code>（<code>main.py:992-1034</code>）是唯一的前向入口。三個階段在 <code>__init__</code> 中被組裝：<code>prelude</code> 與 <code>coda</code> 是 <code>nn.ModuleList</code>（稠密 FFN），<code>recurrent</code> 是單一個 <code>RecurrentBlock</code>（內含 MoE FFN）。注意 Prelude 與 Coda <b>不用 MoE</b>，只有 Recurrent Block 內的 TransformerBlock 用 MoE。</p>
+  <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="-16.31578947368421 -6.304347826086957 652.6315789473683 157.60869565217394" font-family="&#39;Noto Sans TC&#39;, &#39;Heiti TC&#39;, &#39;Arial Unicode MS&#39;, &#39;Microsoft JhengHei&#39;, sans-serif" width="100%" height="100%" style=""><defs><linearGradient id="gradient-arrow-fill-1e4e79" x1="100%" y1="0%" x2="0%" y2="0%"><stop offset="0%" stop-color="#1e4e79" stop-opacity="0.36"></stop><stop offset="100%" stop-color="#1e4e79" stop-opacity="0"></stop></linearGradient><linearGradient id="gradient-arrow-stroke-1e4e79" x1="100%" y1="0%" x2="0%" y2="0%"><stop offset="0%" stop-color="#1e4e79"></stop><stop offset="58%" stop-color="#1e4e79" stop-opacity="0"></stop></linearGradient></defs><g id="infographic-container" x="0" y="0" width="620" height="145"><g x="85.5" y="0" width="449" height="35" transform="translate(85.5, 0)"><g width="449" height="35"><foreignObject overflow="visible" x="0" y="0" width="449" height="35" data-element-type="title" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 24px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">三階段架構資料流（Three-Stage Pipeline）</span></foreignObject></g></g><g x="0" y="35" transform="translate(0, 35)"><g><polygon x="192.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(192.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon><polygon x="402.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(402.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon></g><g data-element-type="items-group"><g x="0" y="40" transform="translate(0, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="0"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">前奏 Prelude</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="0"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">標準區塊跑一次，產生凍結注入源 e</span></foreignObject></g></g><g x="210" y="40" transform="translate(210, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="1"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">迴圈區塊 Recurrent</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="1"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">同一組權重反覆 T 次，每步注入 B·e</span></foreignObject></g></g><g x="420" y="40" transform="translate(420, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="2"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">尾奏 Coda</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="2"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">標準區塊跑一次，映射回輸出空間</span></foreignObject></g></g></g><g data-element-type="btns-group" width="0" height="0" display="none"><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="0" data-element-type="btn-remove" x="90" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="0" data-element-type="btn-add" x="90" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="1" data-element-type="btn-remove" x="300" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="1" data-element-type="btn-add" x="195" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="2" data-element-type="btn-remove" x="510" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="2" data-element-type="btn-add" x="405" y="10"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="3" data-element-type="btn-add" x="615" y="10"></rect></g></g></g></svg></figure>
+  <figcaption>圖 1　三階段架構資料流：一次性預處理 → 共享權重反覆 → 一次性收尾</figcaption>
+</section>
+
+<section>
+  <h2>5. Recurrent Block 的五步管線</h2>
+  <p><code>RecurrentBlock.forward</code>（<code>main.py:825-891</code>）跑最多 <code>n_loops</code> 次迭代，每次執行以下五步管線。每個子步對應一個專題（見後續各章）：</p>
+  <pre><code>for t in range(n_loops):
+    h_loop = loop_index_embedding(h, t, self.loop_dim)  # (a) 迴圈索引嵌入
+    combined = self.norm(h_loop + e)                    # (b) 加凍結 e 再正規化
+    trans_out = self.block(combined, freqs_cis, mask,   # (c) TransformerBlock
+                           kv_cache, cache_key=...)
+    trans_out = trans_out + self.lora(trans_out, t)     # (d) 深度 LoRA 微調
+    h = self.injection(h, e, trans_out)                 # (e) LTI 穩定更新
+    p = self.act(h)                                     # (f) ACT 停止機率
+    ... 累積權重、提早結束 ...</code></pre>
+  <table>
+    <thead><tr><th>步驟</th><th>機制</th><th>本章</th></tr></thead>
+    <tbody>
+      <tr><td>(a)</td><td><code>loop_index_embedding</code>（無參數正弦訊號）</td><td>第 10 章</td></tr>
+      <tr><td>(b)</td><td>凍結 <code>e</code> 注入（殘差相加，進正規化前）</td><td>本章＋第 17 章</td></tr>
+      <tr><td>(c)</td><td><code>TransformerBlock</code>（注意力＋MoE）</td><td>第 8、9 章</td></tr>
+      <tr><td>(d)</td><td><code>LoRAAdapter</code>（共享低秩＋每迴圈尺度）</td><td>第 10 章</td></tr>
+      <tr><td>(e)</td><td><code>LTIInjection</code>（h = A·h + B·e + trans_out）</td><td>第 7 章</td></tr>
+      <tr><td>(f)</td><td><code>ACTHalting</code>（逐位置停止機率）</td><td>第 11 章</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>6. 兩個隱性不變量</h2>
+  <div class="cols-2">
+    <div class="note">
+      <b>權重共享</b>
+      LM head 與嵌入表共享權重（<code>main.py:956</code>），<code>test_weight_tying</code> 驗證。整個 RecurrentBlock 是<b>一個</b> TransformerBlock 實例跑 n_loops 次——這是「k 層參數、kL 層品質」的來源。
+    </div>
+    <div class="note">
+      <b>有快取時不提早結束</b>
+      <code>RecurrentBlock.forward</code> 的提早結束有條件：<code>if halted.all() and kv_cache is None: break</code>。一旦有 KV 快取（生成模式），每個迴圈深度都必須跑完，後續解碼步才能在每個 cache_key 找到已填入的鍵。
+    </div>
+  </div>
+  <p>KV 快取用字串鍵區分各層，避免碰撞：<code>"prelude_0"</code>、<code>"recurrent_loop_3"</code>、<code>"coda_1"</code> 等。這套命名對自迴歸生成至關重要（第 11 章）。</p>
+</section>
+
+<section>
+  <h2>7. 為什麼 Prelude/Coda 不用 MoE</h2>
+  <p>「路由廣度」的價值在<b>反覆推理</b>的迴圈內——隱藏狀態 <code>h_t</code> 跨迴圈演化，router 在每個深度可能選到不同專家子集（第 9 章）。Coda 只跑一次，MoE 的稀疏路由好處有限，稠密 FFN 更直接。Prelude 的職責是把嵌入後的 token 序列「預處理」成穩定、資訊充分的表示 <code>e</code>；先讓 Prelude 用注意力融上下文，<code>e</code> 才攜帶「這整段輸入在說什麼」的語意。</p>
+</section>
+</div>
+<!-- /PAGE: 05-architecture -->
+<!-- PAGE: 06-config -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>8. MythosConfig：唯一的設定入口</h2>
+  <p><code>MythosConfig</code> 是一個 <code>@dataclass</code>（<code>main.py:16-81</code>），所有超參數都集中在此。<code>OpenMythos.__init__</code> 只接收一個 <code>cfg: MythosConfig</code>，每個子模組都從同一份 <code>cfg</code> 讀自己需要的欄位。核心欄位：</p>
+  <div class="cols-2">
+    <table>
+      <thead><tr><th>欄位</th><th>預設</th><th>意義</th></tr></thead>
+      <tbody>
+        <tr><td><code>vocab_size</code></td><td>32000</td><td>詞表大小</td></tr>
+        <tr><td><code>dim</code></td><td>2048</td><td>模型隱藏維度</td></tr>
+        <tr><td><code>n_heads</code></td><td>16</td><td>query 注意力頭數</td></tr>
+        <tr><td><code>n_kv_heads</code></td><td>4</td><td>KV 頭數（僅 GQA）</td></tr>
+        <tr><td><code>max_loop_iters</code></td><td>16</td><td>推理時預設迴圈深度 T</td></tr>
+        <tr><td><code>prelude_layers</code></td><td>2</td><td>迴圈前標準層數</td></tr>
+        <tr><td><code>coda_layers</code></td><td>2</td><td>迴圈後標準層數</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>欄位</th><th>預設</th><th>意義</th></tr></thead>
+      <tbody>
+        <tr><td><code>attn_type</code></td><td>"mla"</td><td>mla / gqa 分派</td></tr>
+        <tr><td><code>kv_lora_rank</code></td><td>512</td><td>[MLA] 壓縮 KV 潛在維度</td></tr>
+        <tr><td><code>n_experts</code></td><td>64</td><td>路由專家總數</td></tr>
+        <tr><td><code>n_shared_experts</code></td><td>2</td><td>恆啟動共享專家數</td></tr>
+        <tr><td><code>n_experts_per_tok</code></td><td>4</td><td>每 token 選 top-K</td></tr>
+        <tr><td><code>act_threshold</code></td><td>0.99</td><td>ACT 累積停止門檻</td></tr>
+        <tr><td><code>lora_rank</code></td><td>16</td><td>每迴圈深度 LoRA 秩</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>9. 七個預設變體：1B 到 1T</h2>
+  <p><code>open_mythos/variants.py</code> 提供 7 個工廠函式，各自回傳調好數值的 <code>MythosConfig</code>。從小到大讀這張表，能歸納出 OpenMythos 的擴展策略：</p>
+  <table>
+    <thead><tr><th>變體</th><th class="num">dim</th><th class="num">專家數</th><th class="num">expert_dim</th><th class="num">迴圈數</th><th>上下文</th><th>最大輸出</th></tr></thead>
+    <tbody>
+      <tr><td>mythos_1b</td><td class="num">2048</td><td class="num">64</td><td class="num">2048</td><td class="num">16</td><td>4k</td><td>4k</td></tr>
+      <tr><td>mythos_3b</td><td class="num">3072</td><td class="num">64</td><td class="num">4096</td><td class="num">16</td><td>4k</td><td>4k</td></tr>
+      <tr><td>mythos_10b</td><td class="num">4096</td><td class="num">128</td><td class="num">5632</td><td class="num">24</td><td>8k</td><td>4k</td></tr>
+      <tr><td>mythos_50b</td><td class="num">6144</td><td class="num">256</td><td class="num">9728</td><td class="num">32</td><td>8k</td><td>4k</td></tr>
+      <tr><td>mythos_100b</td><td class="num">8192</td><td class="num">256</td><td class="num">13568</td><td class="num">32</td><td>1M</td><td>128k</td></tr>
+      <tr><td>mythos_500b</td><td class="num">12288</td><td class="num">512</td><td class="num">23040</td><td class="num">48</td><td>1M</td><td>128k</td></tr>
+      <tr><td>mythos_1t</td><td class="num">16384</td><td class="num">512</td><td class="num">34560</td><td class="num">64</td><td>1M</td><td>128k</td></tr>
+    </tbody>
+  </table>
+  <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="7.703452662417764 -15.471853505010191 651.8618935032894 386.79633762525475" font-family="&#39;Noto Sans TC&#39;, &#39;Heiti TC&#39;, &#39;Arial Unicode MS&#39;, &#39;Microsoft JhengHei&#39;, sans-serif" width="100%" height="100%" style=""><g id="infographic-container" x="0" y="0" width="744" height="379"><g x="234.5" y="0" width="275" height="35" transform="translate(234.5, 0)"><g width="275" height="35"><foreignObject overflow="visible" x="0" y="0" width="275" height="35" data-element-type="title" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 24px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">迴圈深度擴展（1B→1T）</span></foreignObject></g></g><g width="744" height="344" x="0" y="35" transform="translate(0, 35)"><g><path d="M160 24 L160 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M228.1818181818182 24 L228.1818181818182 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M296.3636363636364 24 L296.3636363636364 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M364.5454545454545 24 L364.5454545454545 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M432.7272727272727 24 L432.7272727272727 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M500.9090909090909 24 L500.9090909090909 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M569.090909090909 24 L569.090909090909 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path><path d="M637.2727272727273 24 L637.2727272727273 292" stroke="#262626" stroke-opacity="0.08" data-element-type="shape"></path></g><g><rect x="160" y="24" width="109.0909090909091" height="28" fill="#1783FF" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="64" width="109.0909090909091" height="28" fill="#00C9C9" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="104" width="163.63636363636363" height="28" fill="#F0884D" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="144" width="218.1818181818182" height="28" fill="#D580FF" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="184" width="218.1818181818182" height="28" fill="#7863FF" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="224" width="327.27272727272725" height="28" fill="#60C42D" rx="6" ry="6" data-element-type="shape"></rect><rect x="160" y="264" width="436.3636363636364" height="28" fill="#BD8F24" rx="6" ry="6" data-element-type="shape"></rect></g><g><g x="277.0909090909091" y="38" transform="translate(277.0909090909091, 38)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#1783FF" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">16</text></g><g x="277.0909090909091" y="78" transform="translate(277.0909090909091, 78)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#00C9C9" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">16</text></g><g x="331.6363636363636" y="118" transform="translate(331.6363636363636, 118)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#F0884D" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">24</text></g><g x="386.1818181818182" y="158" transform="translate(386.1818181818182, 158)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#D580FF" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">32</text></g><g x="386.1818181818182" y="198" transform="translate(386.1818181818182, 198)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#7863FF" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">32</text></g><g x="495.27272727272725" y="238" transform="translate(495.27272727272725, 238)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#60C42D" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">48</text></g><g x="604.3636363636364" y="278" transform="translate(604.3636363636364, 278)" width="15" height="20"><text data-element-type="text" width="15" height="20" x="0" y="0" data-x="0" data-y="0" fill="#BD8F24" font-size="14" text-anchor="start" dominant-baseline="central" data-horizontal-align="LEFT" data-vertical-align="MIDDLE" font-weight="bold" style="user-select: none; pointer-events: none;">64</text></g></g><g></g><g><path d="M160 300 L640 300" stroke="#262626" data-element-type="shape"></path><path d="M159.5 300 L159.5 306" stroke="#262626" data-element-type="shape"></path><g x="160" y="314" transform="translate(160, 314)" width="7" height="18"><text data-element-type="text" width="7" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">0</text></g><path d="M227.6818181818182 300 L227.6818181818182 306" stroke="#262626" data-element-type="shape"></path><g x="228.1818181818182" y="314" transform="translate(228.1818181818182, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">10</text></g><path d="M295.8636363636364 300 L295.8636363636364 306" stroke="#262626" data-element-type="shape"></path><g x="296.3636363636364" y="314" transform="translate(296.3636363636364, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">20</text></g><path d="M364.0454545454545 300 L364.0454545454545 306" stroke="#262626" data-element-type="shape"></path><g x="364.5454545454545" y="314" transform="translate(364.5454545454545, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">30</text></g><path d="M432.2272727272727 300 L432.2272727272727 306" stroke="#262626" data-element-type="shape"></path><g x="432.7272727272727" y="314" transform="translate(432.7272727272727, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">40</text></g><path d="M500.4090909090909 300 L500.4090909090909 306" stroke="#262626" data-element-type="shape"></path><g x="500.9090909090909" y="314" transform="translate(500.9090909090909, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">50</text></g><path d="M568.590909090909 300 L568.590909090909 306" stroke="#262626" data-element-type="shape"></path><g x="569.090909090909" y="314" transform="translate(569.090909090909, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">60</text></g><path d="M636.7727272727273 300 L636.7727272727273 306" stroke="#262626" data-element-type="shape"></path><g x="637.2727272727273" y="314" transform="translate(637.2727272727273, 314)" width="13" height="18"><text data-element-type="text" width="13" height="18" x="0" y="0" data-x="0" data-y="0" fill="#262626" font-size="12" text-anchor="middle" dominant-baseline="central" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" style="user-select: none; pointer-events: none;">70</text></g></g><g data-element-type="items-group"><g x="24" y="28" transform="translate(24, 28)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="0"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">1B</span></foreignObject></g><g x="24" y="68" transform="translate(24, 68)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="1"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">3B</span></foreignObject></g><g x="24" y="108" transform="translate(24, 108)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="2"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">10B</span></foreignObject></g><g x="24" y="148" transform="translate(24, 148)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="3"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">50B</span></foreignObject></g><g x="24" y="188" transform="translate(24, 188)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="4"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">100B</span></foreignObject></g><g x="24" y="228" transform="translate(24, 228)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="5"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">500B</span></foreignObject></g><g x="24" y="268" transform="translate(24, 268)" width="120" height="20"><foreignObject overflow="visible" x="0" y="0" width="120" height="20" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="RIGHT" data-vertical-align="TOP" data-indexes="6"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: right; place-content: flex-start flex-end; align-items: flex-start;">1T</span></foreignObject></g></g></g></g></svg></figure>
+  <figcaption>圖 2　迴圈深度隨規模單調上升——RDT 最獨特的擴展軸：模型越大、預設「想得越深」</figcaption>
+</section>
+
+<section>
+  <h2>10. 可觀察的尺度法則</h2>
+  <div class="cols-2">
+    <div>
+      <p>從變體表能歸納出五條擴展策略（也是 Part III 訓練策略的依據）：</p>
+      <ol>
+        <li><b>dim 約略 ×√2 成長</b>：每兩階約翻倍，決定每層計算量。</li>
+        <li><b>專家數在 50B 後才大幅增加</b>：廣度被當作大模型的差異化能力。</li>
+        <li><b>迴圈數單調上升</b>（16→64）：一般 Transformer 不存在的擴展軸。</li>
+        <li><b>上下文只在 100B 跳到 1M</b>：長脈絡是最大規模才啟用的能力。</li>
+        <li><b>共享專家 2→8</b>、<b>每 token 啟動 4→8</b>：越大越強調共用知識。</li>
+      </ol>
+    </div>
+    <div class="note">
+      <b>參數預算公式</b>
+      <code>total ≈ embed + prelude/coda 稠密區塊 + recurrent MLA + MoE</code><br>
+      <code>MoE = 3 * dim * expert_dim * (n_experts + n_shared * n_experts_per_tok)</code><br>
+      <code>expert_dim</code> 是從「扣除其他項後的剩餘預算」反解出來的，讓總參數對齊目標量級。
+    </div>
+  </div>
+  <div class="note">
+    <b>已知 doc/code 不一致</b>
+    所有變體的 <code>attn_type</code> 都是 <code>"mla"</code>，與 README「Model Variants」範例誤稱 <code>mythos_7b()</code>（根本不存在）的 GQA 框架不一致。實際可用的是上表 7 個變體，全部使用 MLA。
+  </div>
+</section>
+</div>
+<!-- /PAGE: 06-config -->
+<!-- PAGE: 07-lti -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>11. LTI 穩定注入與譜半徑</h2>
+  <p>RecurrentBlock 的第 (e) 步 <code>h = A·h + B·e + trans_out</code> 是穩定性的樞紐。本章拆解 <code>LTIInjection</code> 如何用動態系統理論讓這個遞迴「構造性地」永不發散——這是整個 OpenMythos 能被訓練起來的數學根基。</p>
+</section>
+
+<section>
+  <h2>12. 為什麼迴圈訓練會不穩定</h2>
+  <p>README「The Stability Problem」列出兩個主要失敗模式：<b>殘差爆炸</b>（隱藏狀態隨迴圈無界增長）與 <b>Loss 尖峰</b>（注入參數譜範數過大，訓練突然發散）。直觀原因：遞迴 <code>h_{t+1} = A·h_t + …</code> 把 A 反覆相乘，若 A 的特徵值有任何一個絕對值 ≥ 1，對應分量就以該特徵值為底呈指數增長，T 次後爆炸。</p>
+  <p>忽略非線性的 Transformer 項，遞迴退化為離散線性非時變（<span class="en">LTI</span>）系統：<code>h_{t+1} = A·h_t + B·e</code>。對此系統，穩定性<b>完全</b>由 A 的譜半徑 <code>ρ(A) := max |λ_i(A)|</code> 決定：ρ(A) &lt; 1 則穩定收斂，ρ(A) ≥ 1 則不穩定發散。</p>
+</section>
+
+<section>
+  <h2>13. 構造性保證：ρ(A)&lt;1 在數學上不可能被違反</h2>
+  <p><code>LTIInjection</code> 不靠正則化或梯度懲罰來「鼓勵」穩定，而是用參數化讓 ρ(A)&lt;1 在數學上不可能被違反。做法分三步：</p>
+  <pre><code># 步驟一：A 參數化為連續負對角矩陣
+A_continuous = Diag(-exp(log_A))     # log_A 可學，對角元素恆負
+
+# 步驟二：ZOH（零階保持）離散化
+A_discrete = exp(Δt · A_continuous)  # Δt = exp(log_dt) > 0，值落在 (0, 1)
+
+# 步驟三：log 空間計算避免數值 NaN
+def get_A(self):
+    return torch.exp(-torch.exp((self.log_dt + self.log_A).clamp(-20, 20)))</code></pre>
+  <p>關鍵數學鏈：<code>log_A</code> 任意實數 → <code>exp(log_A) &gt; 0</code> → <code>-exp(log_A) &lt; 0</code>（連續系統極點負實數，穩定）；<code>Δt &gt; 0</code>；<code>Δt·A_continuous</code> 對角元素仍負；<code>exp(負數) ∈ (0, 1)</code>（離散特徵值嚴格在單位圓內 → ρ(A)&lt;1）。在 log 空間相加可避免「0 × inf = NaN」的退化；<code>.clamp(-20, 20)</code> 保證任何梯度步長下都有限。</p>
+  <div class="note">
+    <b>激進梯度後仍穩定——直接驗證</b>
+    測試 <code>test_spectral_radius_stable_after_large_grad_step</code> 模擬 lr=1000 的 SGD 一步，然後斷言穩定性<b>仍然</b>成立。這正是「構造性保證」的含義——不依賴溫和的訓練設定。對角 A 可用 <code>A.max()</code> 當譜半徑（特徵值即對角元素），一般（非對角）矩陣必須用 <code>torch.linalg.eigvals(A).abs().max()</code>。
+  </div>
+</section>
+
+<section>
+  <h2>14. 更新規則的完整形式</h2>
+  <p><code>forward</code>（<code>main.py:727-742</code>）：<code>return A * h + self.B * e + transformer_out</code>。三項相加的語意：</p>
+  <table>
+    <thead><tr><th>項</th><th>語意</th></tr></thead>
+    <tbody>
+      <tr><td><code>A * h</code></td><td>衰減項——每通道獨立衰減（對角），衰減率受 (0,1) 約束</td></tr>
+      <tr><td><code>self.B * e</code></td><td>注入項——把凍結的 <code>e</code> 加回，防止漂移</td></tr>
+      <tr><td><code>transformer_out</code></td><td>非線性推理貢獻（注意力＋MoE 輸出）</td></tr>
+    </tbody>
+  </table>
+  <p>三者相加：<b>衰減的舊狀態 ＋ 重新注入的原訊號 ＋ 本輪新推理</b>。帶輸入的系統在 ρ(A)&lt;1 時是 BIBO 穩定<span class="en">（bounded-input bounded-output）</span>——持續注入有界訊號只會把狀態推向有界穩態，而非無界增長。這是「每迴圈注入 e 不爆炸」的數學根據（詳見 Part III 第 18 章）。</p>
+</section>
+</div>
+<!-- /PAGE: 07-lti -->
+<!-- PAGE: 08-attention -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>15. 注意力機制：MLA 與 GQA</h2>
+  <p>注意力是可替換零件，靠 <code>cfg.attn_type</code> 分派（<code>main.py:649</code>）：<code>"mla"</code> → <code>MLAttention</code>；<code>"gqa"</code> → <code>GQAttention</code>。兩者都遵守同一個 <code>forward</code> 簽名，對上層完全透明。</p>
+  <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="-9.473684210526315 -45.869565217391305 378.9473684210526 146.73913043478262" font-family="&#39;Noto Sans TC&#39;, &#39;Heiti TC&#39;, &#39;Arial Unicode MS&#39;, &#39;Microsoft JhengHei&#39;, sans-serif" width="100%" height="100%" style=""><defs><filter id="vs-divider-glow-filter" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"></feGaussianBlur></filter><filter id="drop-shadow" x="-25%" y="-25%" width="200%" height="200%"><feDropShadow dx="4" dy="4" stdDeviation="4" flood-color="black" flood-opacity="0.8"></feDropShadow></filter></defs><g id="infographic-container" x="0" y="-40" width="360" height="135" transform="translate(0, -40)"><g x="0" y="0" width="360" height="35"><g width="360" height="35"><foreignObject overflow="visible" x="0" y="0" width="360" height="35" data-element-type="title" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 24px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">注意力機制對比（MLA vs GQA）</span></foreignObject></g></g><g x="7.5" y="75" transform="translate(7.5, 75)"><g><g x="245" y="-40" width="100" height="100" transform="translate(245, -40)"><ellipse x="0" y="0" width="100" height="100" fill="#3283cb" filter="url(#vs-divider-glow-filter)" opacity="0.6" cx="50" cy="50" rx="50" ry="50"></ellipse><ellipse x="0" y="0" width="100" height="100" fill="#1e4e79" data-element-type="shape" cx="50" cy="50" rx="50" ry="50"></ellipse><text x="50" y="50" font-size="66.66666666666667" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" filter="url(#drop-shadow)">VS</text></g></g><g data-element-type="items-group"></g><g data-element-type="btns-group" width="0" height="0" display="none"><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="0,0" data-element-type="btn-add" x="115" y="0"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="1,0" data-element-type="btn-add" x="455" y="0"></rect></g></g></g></svg></figure>
+  <figcaption>圖 3　MLA 與 GQA 的取捨：MLA 壓縮 KV 潛在（快取小 10–20×）適合長脈絡；GQA 吃 Flash Attention 2 適合低延遲</figcaption>
+</section>
+
+<section>
+  <h2>16. GQA：Grouped Query Attention</h2>
+  <p><code>GQAttention</code> 實作 Ainslie et al., 2023。query 頭數 <code>n_heads</code> 多於 key/value 頭數 <code>n_kv_heads</code>：每個 KV 頭被 <code>n_heads // n_kv_heads</code> 個 query 頭共享，把 KV 快取縮成該比例分之一，但保留完整 query 表達力。預設 16 query 頭 / 4 KV 頭，即快取省 4 倍。</p>
+  <div class="cols-2">
+    <div class="note">
+      <b>RoPE 先於快取（不變量）</b>
+      GQA 先對 Q、K 做 RoPE，<b>再</b>寫入快取（<code>main.py:236-243</code>）。快取值已帶位置編碼，取出時不必重旋。若違反此順序，解碼時會對已旋轉的鍵再旋一次，破壞相對位置語意。MLA 同樣遵守（<code>main.py:389-395</code>）。
+    </div>
+    <div class="note">
+      <b>Flash Attention 2 選用</b>
+      Flash Attention 只影響 <code>GQAttention</code>（<b>不</b>影響 MLA）。裝了 <code>flash-attn</code> 時原生支援 GQA（不需 repeat_interleave）；沒裝時靜默退回手動 SDPA，由 <code>_HAS_FLASH_ATTN</code> 旗標守護。透過 <code>[flash]</code> extra 安裝。
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>17. MLA：Multi-Latent Attention（DeepSeek-V2 風格）</h2>
+  <p><code>MLAttention</code> 是所有正式變體的選擇。核心洞見：與其快取完整的 K 與 V（各 <code>n_heads × head_dim</code> 每 token），不如把 KV 路徑壓縮過一個低秩潛在 <code>c_kv</code>，只快取這個潛在加上 RoPE 鍵；解碼時再用便宜的線性投影重建 K_nope 與 V。</p>
+  <pre><code># KV 路徑：壓縮 → 快取 → 重建
+x → kv_down (dim → kv_lora_rank + qk_rope_head_dim)
+     分成 c_kv（潛在，快取）與 k_rope_raw（跨頭共享）
+k_rope = RoPE(expand(k_rope_raw))   ← 快取前套 RoPE
+c_kv → kv_norm → kv_up → [k_nope | v]  每步重建
+k = cat(k_nope, k_rope)  每頭</code></pre>
+  <p>快取大小對比決定了 MLA 為何是大規模首選：</p>
+  <table>
+    <thead><tr><th>注意力</th><th>每層每 token 快取</th></tr></thead>
+    <tbody>
+      <tr><td>GQA</td><td><code>n_kv_heads × head_dim × 2</code></td></tr>
+      <tr><td>MLA</td><td><code>kv_lora_rank + n_heads × qk_rope_head_dim</code></td></tr>
+    </tbody>
+  </table>
+  <p>量產規模下 MLA 約小 <b>10–20 倍</b>——在 1M 上下文（mythos_100b 以上）這是「能不能塞得進去」的差別，而非「省不省錢」。測試 <code>test_mla_fewer_kv_cache_bytes</code> 用最小配置（dim=64）就成立，說明 MLA 的快取優勢在很小規模就顯現。<code>example.py</code> 與單測偏好 GQA 是因為簡單、快；正式變體清一色 MLA——尺度決定了 KV 快取是主導成本。</p>
+</section>
+</div>
+<!-- /PAGE: 08-attention -->
+<!-- PAGE: 09-moe -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>18. MoE 前饋網路與專家路由</h2>
+  <p>前饋網路（FFN）依位置選用：RecurrentBlock 內的 TransformerBlock 用 <code>MoEFFN</code>（稀疏路由＋共享專家）；Prelude/Coda 用稠密 SwiGLU（<code>Expert</code>）。這是「廣度」（跨領域能力）的來源，與迴圈提供的「深度」互補。</p>
+</section>
+
+<section>
+  <h2>19. MoEFFN：兩類專家（DeepSeekMoE）</h2>
+  <div class="cols-2">
+    <div>
+      <h3>路由專家（routed experts）</h3>
+      <ul>
+        <li><code>n_experts</code> 個小 FFN（預設 64）。</li>
+        <li>每 token 由 router 選 top-<code>n_experts_per_tok</code> 個（預設 4）。</li>
+        <li>router 是 <code>nn.Linear(dim, n_experts)</code>。</li>
+        <li>啟動比例 4/64 = 6.25%。</li>
+      </ul>
+    </div>
+    <div>
+      <h3>共享專家（shared experts）</h3>
+      <ul>
+        <li><code>n_shared_experts</code> 個較大 FFN，<b>恆啟動</b>。</li>
+        <li>寬度刻意放大為 <code>expert_dim × n_experts_per_tok</code>。</li>
+        <li>吸收跨領域共用模式（語法、基本推理），避免路由專家重複學習。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>20. 無輔助損失的負載平衡（DeepSeek-V3 技巧）</h2>
+  <p>這是 <code>MoEFFN.forward</code>（<code>main.py:508-516</code>）最精巧的部分。關鍵在於 <b>bias 只影響「選誰」，不影響「權重多大」</b>：</p>
+  <pre><code>logits = self.router(flat)                              # (B*T, n_experts)，無偏
+scores = F.softmax(logits, dim=-1)
+_, topk_idx = (logits + self.router_bias).topk(self.topk, dim=-1)  # 選擇時加 bias
+topk_scores = scores.gather(-1, topk_idx)               # 但權重用無偏 scores
+topk_scores = topk_scores / topk_scores.sum(dim=-1, keepdim=True)  # 重正規化</code></pre>
+  <p><code>router_bias</code> 是 buffer 不是參數（<code>main.py:485</code>），訓練時外部更新（用來把使用不足的專家更常選到）。選 top-K 時用 <code>logits + router_bias</code>，但 gating 權重取自無偏的 <code>scores</code>。因此 bias <b>永遠不出現在梯度裡</b>——它只調整「派工」，不扭曲 loss 信號，避免了傳統 auxiliary loss 法會干擾主損失的問題。</p>
+  <div class="note">
+    <b>MoE 與迴圈的乘法效應</b>
+    隱藏狀態 <code>h_t</code> 跨迴圈演化，router 在每個深度可能選到不同專家子集，於是「每個迴圈計算上都是獨特的，即使共享權重」。深度（同一組權重反覆運算）× 廣度（每步從大專家池選小子集）= 極大的計算路徑多樣性，但參數量只來自一組共享層＋專家池。這也是 mythos_100b 以上能把專家數拉到 256–512、卻維持啟動比 ~1.5% 的原因。
+  </div>
+</section>
+
+<section>
+  <h2>21. 單一專家：SwiGLU</h2>
+  <p><code>Expert</code>（<code>main.py:426-453</code>）是基本積木：<code>down(silu(gate(x)) * up(x))</code>，即門控線性單元變體。它同時用作 MoE 內的個別路由專家，以及 Prelude/Coda 的稠密 FFN（後者 <code>expert_dim = dim * 4 // 3</code>）。測試 <code>test_shared_experts_always_fire</code> 用一個巧妙方式驗證共享專家具獨立貢獻：把所有路由專家權重清零，若輸出仍非零，表示共享專家具獨立貢獻。</p>
+</section>
+</div>
+<!-- /PAGE: 09-moe -->
+<!-- PAGE: 10-recurrence -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>22. 迴圈索引嵌入與深度 LoRA</h2>
+  <p>共享權重要能「按深度分化」，否則被迫做萬能折衷。設想 TransformerBlock 跑 16 次，若每次輸入完全相同，權重只能學到「一個對所有深度都尚可的折衷」。OpenMythos 用兩個互補機制緩解：無參數的 <code>loop_index_embedding</code> 與少量參數的 <code>LoRAAdapter</code>。</p>
+</section>
+
+<section>
+  <h2>23. 機制一：loop_index_embedding（無參數）</h2>
+  <p><code>loop_index_embedding</code>（<code>main.py:541-570</code>）在隱藏狀態的前 <code>loop_dim</code> 個通道注入正弦訊號。這與 RoPE 在序列位置的邏輯同構，只是把「序列位置 m」換成「迴圈深度 t」。特點：純函數無可學參數；只動前 <code>loop_dim = dim // 8</code> 通道，其餘不變；不同迭代產生不同輸出。在 RecurrentBlock 內是「先注入迴圈索引、再加 e、再 norm」——三個訊號在進注意力前就疊好。</p>
+  <pre><code>def loop_index_embedding(h, loop_t, loop_dim, theta=10000.0):
+    freqs = 1.0 / (theta ** (torch.arange(0, loop_dim, 2, ...) / loop_dim))
+    angles = loop_t * freqs
+    emb = torch.cat([angles.sin(), angles.cos()], dim=-1)[:loop_dim]
+    emb_full = torch.zeros(h.shape[-1], ...)
+    emb_full[:loop_dim] = emb
+    return h + emb_full.unsqueeze(0).unsqueeze(0)</code></pre>
+</section>
+
+<section>
+  <h2>24. 機制二：LoRAAdapter（少量參數）</h2>
+  <p><code>LoRAAdapter</code>（<code>main.py:578-619</code>）源自 Relaxed Recursive Transformers（Bae et al., 2024）。它介於「純權重共享」與「每層獨立權重」之間：<code>delta(x, t) = (down(x) * scale[t]) @ B</code>。三個組件：<code>down</code>（Linear(dim, rank)）與 <code>B</code>（(rank, dim)）跨所有迴圈共享；<code>scale</code>（Embedding(max_loops, rank)）則<b>每個迴圈一個</b>元素級尺度向量。總參數開銷極小，但讓每個迴圈的有效變換略微不同。LoRA delta 加在 TransformerBlock 輸出上。</p>
+  <div class="note">
+    <b>深度外推的關鍵：clamp（必須保留的不變量）</b>
+    <code>LoRAAdapter.forward</code>：<code>t_idx = loop_t if loop_t &lt;= max_t else max_t</code>。推理時 <code>n_loops</code> 可以超過訓練的 <code>max_loop_iters</code>（深度外推），此時 Embedding 表沒有那麼多列，直接索引會越界。clamp 讓超出範圍的迭代<b>重用最後一個學到的尺度</b>，而非崩潰。這與 ACT 的「提早停止」互補：訓練範圍內靠 ACT 決定何時停，訓練範圍外靠 clamp 不讓 LoRA 越界。
+  </div>
+</section>
+
+<section>
+  <h2>25. 兩個機制的分工</h2>
+  <table>
+    <thead><tr><th>面向</th><th>loop_index_embedding</th><th>LoRAAdapter</th></tr></thead>
+    <tbody>
+      <tr><td>有無參數</td><td>無（純正弦）</td><td>有（低秩＋每迴圈尺度）</td></tr>
+      <tr><td>注入位置</td><td>隱藏狀態 h（進 block 前）</td><td>區塊輸出（出 block 後）</td></tr>
+      <tr><td>作用層次</td><td>提供「我在第幾圈」訊號</td><td>對輸出做深度相關微調</td></tr>
+      <tr><td>外推處理</td><td>函數定義域任意（無越界）</td><td>clamp 到最後一個尺度</td></tr>
+    </tbody>
+  </table>
+  <p>兩者疊加：進 block 前知道深度（索引嵌入），出 block 後再按深度微調（LoRA）。一前一後、一無參數一有參數，共同讓「迴圈不是單純重複」。對應五步管線的 (a) 與 (d)。</p>
+</section>
+</div>
+<!-- /PAGE: 10-recurrence -->
+<!-- PAGE: 11-act-generation -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>26. ACT 自適應計算時間</h2>
+  <p>「更多迴圈」並非總是更好——超過某個深度，過度遞迴會<b>降低</b>預測（隱藏狀態漂過解答進入雜訊，即 overthinking）。<code>ACTHalting</code>（<code>main.py:750-780</code>）讓<b>每個位置獨立</b>決定何時停止累積更新——極簡（一個線性層加 sigmoid），從當前隱藏狀態預測「本步停止機率」<code>p</code>。</p>
+</section>
+
+<section>
+  <h2>27. ACT 剩餘機率技巧與 still_running 閘門</h2>
+  <p>真正的學問在 <code>RecurrentBlock.forward</code> 的累積邏輯（<code>main.py:865-883</code>）。採用 Graves (2016) 的標準「remainder trick」，確保輸出是「跨迴圈隱藏狀態的加權和，權重和為 1」：</p>
+  <pre><code>p = self.act(h)                          # 本步停止機率 (B,T)
+still_running = ~halted                  # 還沒停的位置
+remainder = (1.0 - cumulative_p).clamp(min=0)    # 剩餘機率質量
+weight = torch.where(
+    cumulative_p + p >= self.cfg.act_threshold,  # 若累積+本步跨過門檻…
+    remainder,                                   # …就把剩餘全給它（最後一步）
+    p,                                           # 否則給本步機率
+)
+weight = weight * still_running.float()          # 已停位置權重歸零
+h_out = h_out + weight.unsqueeze(-1) * h         # 加權累加</code></pre>
+  <div class="note">
+    <b>OpenMythos 特有的修正：still_running 閘門</b>
+    若不乘上 <code>still_running</code>，已停止位置的 <code>remainder</code> 在停止後仍 &gt; 0，會被重複加進 <code>h_out</code>，破壞「只貢獻一次」的語意。這個閘門確保每個位置<b>恰好在停止那步</b>貢獻完剩餘質量，之後靜默。
+  </div>
+</section>
+
+<section>
+  <h2>28. ACT 帶來的性質與門檻取捨</h2>
+  <div class="cols-2">
+    <div>
+      <h3>三個性質</h3>
+      <ol>
+        <li><b>逐位置自適應</b>：同 batch 內簡單 token 早停、困難 token 跑滿深度，理論可帶來 2–3× 吞吐。</li>
+        <li><b>防過度思考</b>：收斂後停止累積，避免漂進雜訊。</li>
+        <li><b>理論 Turing 完備</b>：Graves (2016) 證明 ACT 讓模型 Turing 完備。</li>
+      </ol>
+    </div>
+    <div>
+      <h3>門檻取捨</h3>
+      <p><code>act_threshold</code> 預設 0.99（所有變體一致）。越接近 1：位置傾向跑更多步（更深推理），但更易過度思考；越低：提早停止更激進，省計算但可能沒想透。0.99 偏「讓它多想」，與 RDT「靠深度取勝」的哲學一致。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>29. KV 快取與自迴歸生成</h2>
+  <p><code>OpenMythos.generate</code>（<code>main.py:1036-1085</code>）用 KV 快取把解碼成本從 O(T²) 降到 O(T)/步。三個關鍵設計：第 0 步吃整段 prompt，之後只吃一個 token；<code>start_pos</code> 控制 RoPE 切片；<code>kv_cache</code> 是同一個 dict 跨步累積。每個迴圈深度有獨立 cache_key（<code>"recurrent_loop_{t}"</code>），所以有快取時即使全停也必須跑完所有迴圈，保證每個深度的鍵都被填入。</p>
+  <div class="note">
+    <b>深度外推兌現</b>
+    訓練用 <code>max_loop_iters</code>，測試時可傳更大的 <code>n_loops</code>。這靠兩個第 10 章談過的機制：<code>loop_index_embedding</code> 是純函數（任意定義域）；<code>LoRAAdapter</code> 的 clamp（不越界）。<code>generate(..., n_loops=8)</code> 可在生成時全域調整「思考深度」——簡單任務調小省時、困難任務調大求質。取樣用 temperature + top-k。
+  </div>
+</section>
+
+<section>
+  <h2>30. Part I 總回顧：十大不變量</h2>
+  <table>
+    <thead><tr><th>章</th><th>主題</th><th>核心不變量</th></tr></thead>
+    <tbody>
+      <tr><td>4</td><td>假設與總覽</td><td>RDT = 共享權重反覆運算</td></tr>
+      <tr><td>5</td><td>三階段資料流</td><td>凍結 e 每迴圈注入</td></tr>
+      <tr><td>6</td><td>Config 與變體</td><td>MLA 是所有正式變體預設</td></tr>
+      <tr><td>7</td><td>LTI 穩定性</td><td>ρ(A)&lt;1 構造保證</td></tr>
+      <tr><td>8</td><td>注意力</td><td>RoPE 先於快取</td></tr>
+      <tr><td>9</td><td>MoE</td><td>bias 只調選擇不進梯度</td></tr>
+      <tr><td>10</td><td>迴圈分化</td><td>LoRA clamp 支援深度外推</td></tr>
+      <tr><td>11</td><td>ACT</td><td>有快取時跑滿所有迴圈</td></tr>
+      <tr><td>11</td><td>生成與快取</td><td>每迴圈深度獨立 cache_key</td></tr>
+      <tr><td>11</td><td>權重共享</td><td>LM head 與嵌入共享</td></tr>
+    </tbody>
+  </table>
+  <p>這十個不變量構成 Part II–IV 的技術地基。下一篇開始轉向截然不同的機制——OpenRouter Fusion。</p>
+</section>
+</div>
+<!-- /PAGE: 11-act-generation -->
+<!-- PAGE: 12-fusion -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>Part II 緒論：OpenRouter Fusion 多模型審議</h2>
+  <p>Part II（對應原始研究第 11–15 篇）轉向一個截然不同的機制。Part I 用十篇拆解了 OpenMythos 的「單模型反覆運算」；從此起是「多模型並行、judge 收斂」。<code>openrouter:fusion</code> 伺服器端工具賦予任何模型多模型審議<span class="en">（multi-model deliberation）</span>能力。</p>
+</section>
+
+<section>
+  <h2>31. Fusion 是什麼</h2>
+  <p>當你的模型判斷某個 prompt 值得多方視角時，它呼叫此工具——一組模型（panel，最多 8 個）並行回答，附帶 <code>web_search</code> 與 <code>web_fetch</code>；一個判斷模型（judge）比對回應，產出結構化分析，最後由你的模型寫出最終答案。</p>
+  <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="-27.36842105263158 -6.304347826086957 1094.7368421052633 157.60869565217394" font-family="&#39;Noto Sans TC&#39;, &#39;Heiti TC&#39;, &#39;Arial Unicode MS&#39;, &#39;Microsoft JhengHei&#39;, sans-serif" width="100%" height="100%" style=""><defs><linearGradient id="gradient-arrow-fill-1e4e79" x1="100%" y1="0%" x2="0%" y2="0%"><stop offset="0%" stop-color="#1e4e79" stop-opacity="0.36"></stop><stop offset="100%" stop-color="#1e4e79" stop-opacity="0"></stop></linearGradient><linearGradient id="gradient-arrow-stroke-1e4e79" x1="100%" y1="0%" x2="0%" y2="0%"><stop offset="0%" stop-color="#1e4e79"></stop><stop offset="58%" stop-color="#1e4e79" stop-opacity="0"></stop></linearGradient></defs><g id="infographic-container" x="0" y="0" width="1040" height="145"><g x="266" y="0" width="508" height="35" transform="translate(266, 0)"><g width="508" height="35"><foreignObject overflow="visible" x="0" y="0" width="508" height="35" data-element-type="title" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 24px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">Fusion 多模型審議五階段（Five-Stage Pipeline）</span></foreignObject></g></g><g x="0" y="35" transform="translate(0, 35)"><g><polygon x="192.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(192.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon><polygon x="402.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(402.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon><polygon x="612.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(612.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon><polygon x="822.5" y="62.5" width="25" height="25" fill="url(#gradient-arrow-fill-1e4e79)" stroke="url(#gradient-arrow-stroke-1e4e79)" transform="translate(822.5, 62.5)rotate(0 12.5 12.5)" data-element-type="shape" points="0,7 13,7 13,1.875 25,14.374999999999998 13,26.875 13,22 0,22"></polygon></g><g data-element-type="items-group"><g x="0" y="40" transform="translate(0, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="0"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">注入工具</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="0"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">模型讀 prompt 判斷是否多方視角</span></foreignObject></g></g><g x="210" y="40" transform="translate(210, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="1"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">Panel 並行</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="1"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">最多 8 模型同時回答＋查網路</span></foreignObject></g></g><g x="420" y="40" transform="translate(420, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="2"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">Judge 比對</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="2"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">比對非合併，產結構化 JSON</span></foreignObject></g></g><g x="630" y="40" transform="translate(630, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="3"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">結構分析</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="3"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">共識／矛盾／洞見／盲區</span></foreignObject></g></g><g x="840" y="40" transform="translate(840, 40)"><g width="200" height="26"><foreignObject overflow="visible" x="0" y="0" width="200" height="26" data-element-type="item-label" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="MIDDLE" data-indexes="4"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-weight: bold; font-size: 18px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: center; align-items: center;">寫最終答案</span></foreignObject></g><g x="0" y="30" transform="translate(0, 30)" width="200" height="40"><foreignObject overflow="visible" x="0" y="0" width="200" height="40" data-element-type="item-desc" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP" data-word-wrap="true" data-indexes="4"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(90, 90, 90); font-size: 14px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">outer 模型基於分析撰寫</span></foreignObject></g></g></g><g data-element-type="btns-group" width="0" height="0" display="none"><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="0" data-element-type="btn-remove" x="90" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="0" data-element-type="btn-add" x="90" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="1" data-element-type="btn-remove" x="300" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="1" data-element-type="btn-add" x="195" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="2" data-element-type="btn-remove" x="510" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="2" data-element-type="btn-add" x="405" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="3" data-element-type="btn-remove" x="720" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="3" data-element-type="btn-add" x="615" y="10"></rect><rect fill="#F9C0C0" fill-opacity="0.3" width="20" height="20" data-indexes="4" data-element-type="btn-remove" x="930" y="120"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="4" data-element-type="btn-add" x="825" y="10"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="5" data-element-type="btn-add" x="1035" y="10"></rect></g></g></g></svg></figure>
+  <figcaption>圖 4　Fusion 五階段管線：注入工具 → 模型決定 → Panel 並行 → Judge 比對 → 寫最終答案</figcaption>
+</section>
+
+<section>
+  <h2>32. 五階段管線詳解</h2>
+  <ol>
+    <li><b>注入工具</b>：若用 <code>model: "openrouter/fusion"</code> 別名，router 把別名解析成真實模型並掛上 <code>openrouter:fusion</code> 工具。</li>
+    <li><b>模型決定是否呼叫</b>：你的模型讀完 prompt，自己判斷這題值不值得「多方視角」。</li>
+    <li><b>Panel 並行回答</b>：一組模型同時回答，每個都帶 <code>web_search</code> 與 <code>web_fetch</code>。</li>
+    <li><b>Judge 比對（不融合）</b>：judge 收到所有 panel 回應，<b>比對而非合併</b><span class="en">（compares, not merges）</span>，產出結構化 JSON。</li>
+    <li><b>你的模型寫最終答案</b>：拿到結構化分析後，由你的模型（outer）撰寫最終回覆。</li>
+  </ol>
+  <div class="note">
+    <b>關鍵語意區別</b>
+    judge 是 compares, not merges——它不做加權平均或多數決；它把「多數模型同意的」當高信心共識、標出分歧、保留單一模型的獨特洞見、點出無人涵蓋的盲區。最終答案由你的模型基於這份分析寫出，所以「結果不是簡單多數決」。
+  </div>
+</section>
+
+<section>
+  <h2>33. 與 OpenMythos 迴圈的初步對照</h2>
+  <table>
+    <thead><tr><th>維度</th><th>OpenMythos 迴圈</th><th>OpenRouter Fusion</th></tr></thead>
+    <tbody>
+      <tr><td>誰在反覆</td><td>同一個模型，同一組權重</td><td>多個不同模型，各跑一次</td></tr>
+      <tr><td>「深度」來源</td><td>迴圈次數 T</td><td>panel 模型數 N</td></tr>
+      <tr><td>「整合」發生在哪</td><td>每迴圈的 A·h + B·e（連續空間）</td><td>judge 一次性比對（符號空間）</td></tr>
+      <tr><td>中間產物</td><td>連續隱藏狀態（不可讀）</td><td>多段文字＋結構化 JSON（可讀）</td></tr>
+      <tr><td>時序</td><td>序列（一步接一步）</td><td>並行（panel 同時）再序列（judge）</td></tr>
+      <tr><td>成本軸</td><td>計算隨 T 線性長</td><td>呼叫數隨 N 線性長</td></tr>
+    </tbody>
+  </table>
+  <p>兩者都在做「把多個視角收斂成一個答案」，但<b>機制層級完全不同</b>：Mythos 在單一模型的潛在空間裡反覆；Fusion 在多個模型之間透過自然語言協調。</p>
+</section>
+
+<section>
+  <h2>34. 何時該用 Fusion</h2>
+  <p>官方指引明確：Fusion 為「研究問題、跨領域批判、比較型任務、出錯成本高」的場景設計。短小戰術型 prompt 不會觸發它（模型自己會判斷不值得）。要強制每次都跑，可設 <code>tool_choice: "required"</code>。</p>
+</section>
+</div>
+<!-- /PAGE: 12-fusion -->
+<!-- PAGE: 13-fusion-mechanics -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>35. Fusion 的三種入口</h2>
+  <p>官方提供三種使用入口，明言「三者打的是同一條 pipeline」，但控制粒度、使用姿態、適用場景各異。選對入口是落地整合的第一步。</p>
+  <table>
+    <thead><tr><th>入口</th><th>形式</th><th>定位</th><th>控制粒度</th></tr></thead>
+    <tbody>
+      <tr><td>Fusion Router</td><td><code>model: "openrouter/fusion"</code></td><td>把整條管線當成一個「模型」用</td><td>最省事，工具自動注入</td></tr>
+      <tr><td>Fusion Plugin</td><td><code>plugins: [{id: "fusion", ...}]</code></td><td>在已有 model 上掛「設定面板」</td><td>中等，可選 preset 與模型</td></tr>
+      <tr><td>Server Tool</td><td><code>tools: [{type: "openrouter:fusion", ...}]</code></td><td>直接宣告工具，模型自行決定何時呼叫</td><td>最高，可搭配其他工具</td></tr>
+    </tbody>
+  </table>
+  <p>Server Tool 的獨特優勢：因為 <code>tools</code> 是陣列，可以讓同一個模型同時擁有 fusion、web_search、自訂函式呼叫等工具，由模型自己調度。Router 別名只注入 fusion 一個工具，所以 <code>tool_choice: "required"</code> 等同強制 fusion。回應的 <code>model</code> 欄位回報實際處理請求的模型，要查 generation metadata 的 <code>router</code> 欄位才知是否走 Fusion。</p>
+  <div class="note">
+    <b>judge 恆為 temperature 0</b>
+    你設的 <code>temperature</code> 只影響 panel，不影響 judge。比對必須可重現、不摻隨機。這與 OpenMythos 的 LTI 注入「構造性穩定」有異曲同工之妙：兩者都把「該確定的部分釘死」。另：web 工具（<code>web_search</code>/<code>web_fetch</code>）在 panel 與 judge <b>兩端都啟用</b>，不是只有 panel 能查網路。
+  </div>
+</section>
+
+<section>
+  <h2>36. 結構化分析的五個欄位</h2>
+  <p>judge 產出的 <code>analysis</code> 物件有五個欄位，各自有明確語意。關鍵字是 <b>compares rather than merges</b>：judge 不把回應糊在一起，而是分類、標註出處、保留分歧。這讓 outer 模型拿到的是「附帶可信度標籤的證據集」，而非「失真的平均」。</p>
+  <table>
+    <thead><tr><th>欄位</th><th>語意</th><th>對 outer 模型的用處</th></tr></thead>
+    <tbody>
+      <tr><td><code>consensus</code></td><td>多數模型一致的論點，視為高信心</td><td>可放心採信、寫進答案</td></tr>
+      <tr><td><code>contradictions</code></td><td>模型間的分歧，附帶各方立場與出處</td><td>需 outer 裁決或並陳</td></tr>
+      <tr><td><code>partial_coverage</code></td><td>只有部分模型涵蓋的點</td><td>提示某論點證據不足</td></tr>
+      <tr><td><code>unique_insights</code></td><td>單一模型的獨特洞見</td><td>值得考量但未必代表共識</td></tr>
+      <tr><td><code>blind_spots</code></td><td>全體 panel 都沒談的主題</td><td>提示答案可能的缺口</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>37. 三級降級處理</h2>
+  <p>Fusion 的容錯設計是最值得借鏡的工程細節之一——「降級而非中斷」：</p>
+  <div class="cols-3">
+    <div class="note">
+      <b>部分 panel 失敗</b>
+      至少一個成功時仍 <code>status: "ok"</code>，附 <code>failed_models</code> 陣列說明誰失敗、為何。outer 可基於成功的回應繼續。
+    </div>
+    <div class="note">
+      <b>Judge 失敗（degradation）</b>
+      panel 成功但 judge 失敗時，工具<b>不</b>報錯，回 <code>status: "ok"</code> 並省略 <code>analysis</code>，只給原始 panel <code>responses</code>。
+    </div>
+    <div class="note">
+      <b>硬失敗</b>
+      只有「無法產出任何有用輸出」時回 <code>status: "error"</code>，附型別化 <code>failure_reason</code>（all_panels_failed / insufficient_credits / rate_limited / fusion_invocation_capped / unexpected_error）。
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>38. Preset 體系、成本與遞迴保護</h2>
+  <div class="cols-2">
+    <div>
+      <h3>Preset（&lt;task&gt;-&lt;tier&gt;）</h3>
+      <ul>
+        <li><code>general-high</code>：最強全用途 panel</li>
+        <li><code>general-budget</code>：便宜 panel＋前沿 judge</li>
+        <li><code>general-fast</code>：延遲同質 panel＋前沿 judge</li>
+      </ul>
+      <p>顯式 <code>analysis_models</code> 或 <code>model</code> 永遠蓋過 preset。<code>openrouter/fusion-flash</code> ≡ <code>general-fast</code> 預設。</p>
+    </div>
+    <div>
+      <h3>成本（線性）</h3>
+      <p>1（outer）＋ N（panel）＋ 1（judge）。預設 N=3 → 約 4–5× 單次成本。要省就縮 N 或用 budget preset。</p>
+      <p>對照 Mythos：加迴圈的邊際成本是「同一組權重多跑一次前向」，<b>參數不增長</b>；Fusion 加 panel 是「多呼叫一個完整模型」，<b>線性增加</b>。</p>
+    </div>
+  </div>
+  <div class="note">
+    <b>遞迴保護：Fusion 為何是單層</b>
+    每次 fusion 呼叫帶 <code>x-openrouter-fusion-depth</code> header 標記深度。panel 與 judge 模型<b>不能再呼叫</b> <code>openrouter:fusion</code>——plugin 在注入工具時檢查 header，若已是內層呼叫就拒絕第二次注入。若允許遞迴，深度 d、分支 N 的樹會產生 O(N^d) 次呼叫，成本與延遲瞬間失控。<b>Mythos 鼓勵「無限加迴圈」，Fusion 卻禁止 panel/judge 再呼叫自己</b>——連續空間靠穩定性條件自然收斂可深，離散呼叫空間成本指數成長必須淺。
+  </div>
+</section>
+</div>
+<!-- /PAGE: 13-fusion-mechanics -->
+<!-- PAGE: 14-paradigm -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>Part III 緒論：回授機制的理論與整合</h2>
+  <p>Part III（對應原始研究第 16–20 篇）把 Part I 的 Mythos 與 Part II 的 Fusion 放上天平做系統化對比，用動態系統與控制理論的統一語言精確描述「回授」何時收斂、何時發散，並延伸到擴展成本、失敗模式與訓練策略。</p>
+</section>
+
+<section>
+  <h2>39. 典範對比：迴圈深度 vs 多模型審議</h2>
+  <p>兩者都在解同一個問題：<b>如何用「多次計算」換取「更好的單一答案」</b>。但「多次」的單位完全不同。</p>
+  <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="67.89473684210526 -45.869565217391305 284.2105263157895 146.73913043478262" font-family="&#39;Noto Sans TC&#39;, &#39;Heiti TC&#39;, &#39;Arial Unicode MS&#39;, &#39;Microsoft JhengHei&#39;, sans-serif" width="100%" height="100%" style=""><defs><filter id="vs-divider-glow-filter" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"></feGaussianBlur></filter><filter id="drop-shadow" x="-25%" y="-25%" width="200%" height="200%"><feDropShadow dx="4" dy="4" stdDeviation="4" flood-color="black" flood-opacity="0.8"></feDropShadow></filter></defs><g id="infographic-container" x="0" y="-40" width="345" height="135" transform="translate(0, -40)"><g x="75" y="0" width="195" height="35" transform="translate(75, 0)"><g width="195" height="35"><foreignObject overflow="visible" x="0" y="0" width="195" height="35" data-element-type="title" data-x="0" data-y="0" data-horizontal-align="CENTER" data-vertical-align="TOP"><span xmlns="http://www.w3.org/1999/xhtml" style="overflow: visible; color: rgb(38, 38, 38); font-size: 24px; line-height: 1.4; width: 100%; height: 100%; display: flex; flex-wrap: wrap; word-break: break-word; white-space: pre-wrap; text-align: center; place-content: flex-start center; align-items: flex-start;">兩種收斂典範對比</span></foreignObject></g></g><g x="0" y="75" transform="translate(0, 75)"><g><g x="245" y="-40" width="100" height="100" transform="translate(245, -40)"><ellipse x="0" y="0" width="100" height="100" fill="#3283cb" filter="url(#vs-divider-glow-filter)" opacity="0.6" cx="50" cy="50" rx="50" ry="50"></ellipse><ellipse x="0" y="0" width="100" height="100" fill="#1e4e79" data-element-type="shape" cx="50" cy="50" rx="50" ry="50"></ellipse><text x="50" y="50" font-size="66.66666666666667" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" filter="url(#drop-shadow)">VS</text></g></g><g data-element-type="items-group"></g><g data-element-type="btns-group" width="0" height="0" display="none"><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="0,0" data-element-type="btn-add" x="115" y="0"></rect><rect fill="#B9EBCA" fill-opacity="0.3" width="20" height="20" data-indexes="1,0" data-element-type="btn-add" x="455" y="0"></rect></g></g></g></svg></figure>
+  <figcaption>圖 5　兩種收斂典範：Mythos 連續空間可深、成本免費；Fusion 符號空間必淺、成本線性</figcaption>
+  <table>
+    <thead><tr><th>維度</th><th>Mythos 迴圈深度</th><th>Fusion 多模型審議</th></tr></thead>
+    <tbody>
+      <tr><td>重複單位</td><td>同一組權重跑一次</td><td>一個完整模型呼叫一次</td></tr>
+      <tr><td>多樣性來源</td><td>權重共享＋每迴圈分化</td><td>不同模型本身（異質訓練）</td></tr>
+      <tr><td>整合發生在</td><td>連續潛在空間（A·h + B·e）</td><td>離散符號空間（judge 比對文字）</td></tr>
+      <tr><td>深度上限</td><td>可超過訓練值（深度外推）</td><td>硬性 1 層（遞迴保護）</td></tr>
+      <tr><td>成本曲線</td><td>邊際＝多一次前向（參數不增）</td><td>邊際＝多一次完整呼叫（線性增）</td></tr>
+      <tr><td>防發散</td><td>ρ(A)&lt;1 構造保證</td><td>recursion guard＋capped</td></tr>
+      <tr><td>提早停止</td><td>ACT 逐位置（可學）</td><td>無（panel 全跑完才 judge）</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>40. 三個關鍵反差</h2>
+  <div class="cols-3">
+    <div>
+      <h3>多樣性從哪來</h3>
+      <p>Mythos 的「多樣視角」全部來自單一模型的內部分化（索引嵌入、LoRA、MoE 路由）——<b>合成多樣性</b>。Fusion 來自多個不同模型本身，天然帶不同偏見與強項——<b>取樣既有異質性</b>。</p>
+    </div>
+    <div>
+      <h3>整合的表徵空間</h3>
+      <p>Mythos 是純粹的張量算術，人類無法直接讀懂在想什麼——<b>連續空間</b>。Fusion 是 judge 產出的 JSON——<b>符號空間</b>，人類可直接檢視。連續適合模型內部訓練；符號適合跨模型編排與人類審計。</p>
+    </div>
+    <div>
+      <h3>對「深度」的態度</h3>
+      <p>Mythos 鼓勵深度（推理時可把 n_loops 調超過訓練值）。Fusion 禁止深度（遞迴保護限單層）。一個敢深、一個必須淺，原因都在<b>成本與收斂性的本質差異</b>。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>41. 統一抽象：疊代收斂器</h2>
+  <p>撇開實作，兩者都可抽象成同一個數學骨架——<span class="term">疊代收斂器</span><span class="en">（iterative convergence operator）</span>：</p>
+  <pre><code>給定初始狀態 s_0 與輸入 x
+重複： s_{k+1} = F(s_k, x, views_k)
+直到收斂或達上限
+回傳 s_K</code></pre>
+  <p>Mythos：F = LTI 注入＋TransformerBlock，views_k = 同一模型在第 k 迴圈的條件化輸出。Fusion：F = judge＋outer，views_k = N 個 panel 模型的回應（只疊代一次，單層）。這個抽象讓我們能用統一的動態系統語言談兩者（見下章），並在設計時有共同的設計詞彙：狀態、更新函數、視角來源、停止條件。</p>
+  <div class="note">
+    <b>兩者其實在解同一族問題</b>
+    儘管機制迥異，兩者適用的任務高度重疊：研究問題、跨領域批判、比較型任務、出錯成本高。差別只在<b>在哪裡思考</b>：Mythos 在單一模型的潛在空間裡沉默地、連續地；Fusion 在多個模型之間透過自然語言、顯式地。
+  </div>
+</section>
+</div>
+<!-- /PAGE: 14-paradigm -->
+<!-- PAGE: 15-theory -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>42. 回授的數學基礎：LTI 動態系統</h2>
+  <p>把 Mythos 的 RecurrentBlock 更新規則寫成標準形式，忽略非線性的 Transformer 項，得到離散線性非時變（<span class="en">LTI</span>）系統：<code>h_{t+1} = A·h_t + B·u_t</code>（u_t = e，常數輸入）。這就是控制理論裡最基本的離散時間狀態空間模型——h 是狀態，A 是狀態轉移矩陣，B 是輸入矩陣。</p>
+</section>
+
+<section>
+  <h2>43. 收斂的充要條件：譜半徑</h2>
+  <p>對齊次系統 <code>h_{t+1} = A·h_t</code>，解為 <code>h_t = A^t·h_0</code>。「狀態不爆炸」的條件是 <code>A^t → 0</code>，這等價於譜半徑條件：<code>ρ(A) := max |λ_i(A)| &lt; 1</code>。把 A 對角化後，<code>A^t</code> 每個對角元素是 <code>λ_i^t</code>，<code>|λ_i| &lt; 1</code> 時該分量衰減到 0。</p>
+  <div class="note">
+    <b>帶輸入的系統：為什麼「注入」不破壞穩定性</b>
+    有輸入時若 ρ(A)&lt;1，系統是 BIBO 穩定：齊次解衰減，特解 <code>Σ A^k B u</code> 因幾何級數收斂而有界。這正是「在每個迴圈注入 B·e 不會讓系統爆炸」的數學根據——只要 ρ(A)&lt;1，持續注入有界訊號只會把狀態推向有界穩態附近。OpenMythos 的 e 來自 Prelude，是有限維張量，自然有界。
+  </div>
+</section>
+
+<section>
+  <h2>44. 非線性的考慮：三重保護</h2>
+  <p>真實更新有 <code>Transformer(h_t, e)</code> 這個非線性項。嚴格說，譜半徑條件是對線性近似成立的。為什麼實務上仍可靠？OpenMythos 的穩定性是「線性構造保證＋非線性小增益＋ACT 安全閥」的三重保護：</p>
+  <ol>
+    <li><b>Lipschitz 上界</b>：若 Transformer 塊是 Lipschitz 連續，且其常數 L 滿足 <code>ρ(A) + L &lt; 1</code>（小增益條件），非線性系統仍有收斂保證。</li>
+    <li><b>ACT 的安全閥</b>：即使偶爾偏離，ACT 讓位置在收斂後停止，避免長期累積偏離。</li>
+    <li><b>經驗</b>：lr=1e3 測試顯示，即使極端梯度步驟後 A 仍 &lt; 1，且訓練收斂。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>45. 把同一套語言套到 Fusion</h2>
+  <p>Fusion 不是線性系統，但可視為<b>單步迭代</b>的動態系統：<code>s_1 = F(s_0, x, {m_1(x), ..., m_N(x)})</code>。它只疊代一次（遞迴保護），所以<b>沒有「特徵值爆炸」的風險</b>——不存在 A^t 的累乘。但若假設性地允許遞迴，收斂性完全取決於 F 的「譜半徑」（複合算子的 Lipschitz 常數），而這對自然語言 LLM 是未知且不可控的——這正是 Fusion 用硬性單層界來規避的根本原因。<b>Mythos 靠構造保證 ρ&lt;1 可以放心遞迴；Fusion 無此保證所以禁止遞迴。</b>數學上完全一致。</p>
+  <table>
+    <thead><tr><th>設計選擇</th><th>必須回答的數學問題</th></tr></thead>
+    <tbody>
+      <tr><td>讓狀態遞迴</td><td>回授矩陣 ρ&lt;1 嗎？如何構造性保證？</td></tr>
+      <tr><td>持續注入訊號</td><td>注入項有界嗎？系統 BIBO 穩定嗎？</td></tr>
+      <tr><td>允許非線性</td><td>非線性項 Lipschitz 常數可控嗎？小增益成立嗎？</td></tr>
+      <tr><td>允許深度遞迴</td><td>線性譜半徑＋非線性 Lipschitz 夠小嗎？</td></tr>
+      <tr><td>離散 LLM 呼叫遞迴</td><td>有收斂保證嗎？沒有就必須設硬性深度界</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>46. 機制映射：注入 vs 整合</h2>
+  <p>把 Fusion judge 的「結構化整合」逐項對應到 Mythos 的「B·e 注入」。兩者都是「把外部視角融進推理狀態」的收斂算子，在抽象上同構，在實作上分歧：</p>
+  <table>
+    <thead><tr><th>維度</th><th>Mythos 注入</th><th>Fusion 整合</th></tr></thead>
+    <tbody>
+      <tr><td>視角來源</td><td>單一同源（凍結 e）</td><td>多個異質（panel 模型）</td></tr>
+      <tr><td>表徵空間</td><td>連續張量（可微、可反傳）</td><td>符號 JSON（可讀、可降級）</td></tr>
+      <tr><td>時序</td><td>反覆（每迴圈注入，積分式收斂）</td><td>單次（一次性裁決）</td></tr>
+      <tr><td>分歧處理</td><td>無顯式概念，融進單一狀態</td><td>顯式標記 contradictions</td></tr>
+      <tr><td>降級方式</td><td>預防式（ρ&lt;1 構造保證）</td><td>容錯式（三級降級路徑）</td></tr>
+    </tbody>
+  </table>
+  <p>三個可互相借鏡的設計元素：(1) 讓 Mythos 迴圈狀態攜帶「分歧標記」（提升可解釋性）；(2) 為注入路徑加降級（視角失效時退回其他視角）；(3) 為 Fusion 整合加「反覆修正」（允許 outer 多輪消化 judge 分析，在受限深度內）。</p>
+</section>
+</div>
+<!-- /PAGE: 15-theory -->
+<!-- PAGE: 16-scaling-stability -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>47. 推理期計算擴展：迴圈數 vs 模型數</h2>
+  <p>「test-time scaling」泛指推理時花更多計算換更好答案。OpenMythos 與 Fusion 代表兩個正交的軸：深度擴展（n_loops↑）與廣度擴展（panel 數 N↑），兩者可獨立調，理論上也能組合。</p>
+</section>
+
+<section>
+  <h2>48. Mythos 深度：可預測的飽和指數衰減</h2>
+  <p>Parcae 的 scaling laws 給出明確經驗規律：每多一個迴圈品質提升，但<b>邊際增益遞減</b>，呈飽和指數曲線，與 CoT 的「想更多步」邊際遞減同構。成本上，每加一個迴圈＝多跑一次 RecurrentBlock，<b>參數量不變</b>：</p>
+  <pre><code>成本(n_loops) ∝ n_loops      （線性 FLOPs）
+參數量(n_loops) = 常數        （不隨迴圈增）</code></pre>
+  <p>這是 Mythos 最迷人的性質：<b>推理期加深度「幾乎免費」（只花計算，不花記憶體／參數）</b>。飽和的原因有二：ACT 讓多數位置在收斂後停止（加迴圈對已收斂位置無效）；過度思考讓超過某深度品質反而微降。關鍵是推理時可把 n_loops 調到超過訓練值（深度外推），曲線在訓練範圍之外仍延伸。</p>
+</section>
+
+<section>
+  <h2>49. Fusion 廣度：線性成本、收益受異質性支配</h2>
+  <p>總呼叫＝1（outer）＋ N（panel）＋ 1（judge），預設 N=3 → 約 4–5×。Fusion 文件沒給像 Parcae 那樣精確的 scaling law，但可從機制推論邊際遞減來源：異質性飽和（新加模型若與既有模型高度相似，邊際資訊量低）；盲區收斂（主要視角覆蓋後剩餘盲區很少）；judge 能力上限（比對 N 個回應的難度隨 N 增）。遞減速率取決於<b>你選的模型有多異質</b>，不像 Mythos 的指數衰減那樣可預測。</p>
+  <div class="note">
+    <b>什麼時候該深、什麼時候該廣</b>
+    單一領域、需多步推理（數學、規劃）→ 深（同源視角反覆修正足夠，成本幾乎免費）。跨領域、需異質觀點（研究、批判、比較）→ 廣（異質性是本質需求，單模型難以合成；並行性利於延遲）。出錯成本極高（醫療、法律）→ 廣＋深。低延遲 agent 輪次 → 廣（fast preset）。組合成本相乘（N×迴圈數），應先選主軸，再視需要補另一個。
+  </div>
+</section>
+
+<section>
+  <h2>50. 穩定性與過度思考</h2>
+  <p>兩個機制都會在「想太多」時退化，只是退化方式不同。</p>
+  <div class="cols-2">
+    <div>
+      <h3>Mythos 的三層防護</h3>
+      <table>
+        <thead><tr><th>失敗</th><th>防護</th></tr></thead>
+        <tbody>
+          <tr><td>發散</td><td>構造保證 ρ(A)&lt;1</td></tr>
+          <tr><td>過度思考</td><td>ACT 學習停止</td></tr>
+          <tr><td>外推失效</td><td>LoRA clamp 安全退化</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Fusion 的三層防護</h3>
+      <table>
+        <thead><tr><th>失敗</th><th>防護</th></tr></thead>
+        <tbody>
+          <tr><td>panel 冗餘</td><td>異質選模</td></tr>
+          <tr><td>judge 過載</td><td>節流＋恆溫 0</td></tr>
+          <tr><td>遞迴失控</td><td>硬性單層</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p>對稱點：都防發散、防過載、防退化。不對稱點：<b>Mythos 的停止是「學出來的」（ACT 學停止機率），Fusion 的界是「設定的」（固定單層、固定 token 上限）</b>。這讓 Mythos 能「按問題難度自適應」，Fusion 則是「一刀切的工程界」。好的回授系統應同時有構造上不可能發散（ρ&lt;1 類）與路徑上能降級／停止（ACT／token 上限類）。</p>
+</section>
+
+<section>
+  <h2>51. 訓練與資料策略</h2>
+  <p>訓練腳本 <code>training/3b_fine_web_edu.py</code> 用 FSDP＋AdamW 在 FineWeb-Edu 上預訓練 3B（seq_len 2048、目標 30B tokens、LR 3e-4 cosine decay、bf16）。目標 30B 是「Chinchilla 調整後」的——因為迴圈架構的有效計算量大於參數量暗示的。</p>
+  <div class="note">
+    <b>Parcae 的核心發現：迴圈與資料的權衡</b>
+    在固定 FLOP 預算下，「多迴圈＋少資料」比「少迴圈＋多資料」更省 loss。兩個軸（迴圈數、token 數）各有冪律，指數跨尺度一致。這是反直覺的——把計算花在「讓同一批資料被反覆深加工」比「看更多淺資料」更有效。證據：770M 參數的迴圈模型達到 1.3B 固定深度 Transformer 的下游品質——<b>約一半參數達同品質</b>。
+  </div>
+  <p>迴圈模型結構上偏推理、弱記憶（looping improves reasoning but can hurt memorization）。緩解：looping-based regularization——對推理任務用強迴圈約束、對檢索任務放鬆。Fusion 端的「訓練」其實是編排——panel 與 judge 都是現成模型，成本在推理而非訓練。</p>
+</section>
+</div>
+<!-- /PAGE: 16-scaling-stability -->
+<!-- PAGE: 17-design -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>Part IV 緒論：設計文件——建構 Mythos 式回授 LLM</h2>
+  <p>Part IV（對應原始研究第 21 篇）是本系列壓軸。本文件<b>不含實作程式碼</b>，僅提出設計藍圖，綜合前 20 篇證據回答一個問題：「如果我要從零打造一個具備 Mythos 式響應與回授的 LLM 機制，該從哪裡開始、要做哪些決定？」每一條設計建議都附證據出處，確保可追溯、可驗證。</p>
+</section>
+
+<section>
+  <h2>52. 第一步：先回答三個前提問題</h2>
+  <table>
+    <thead><tr><th>問題</th><th>選項</th><th>決策依據</th></tr></thead>
+    <tbody>
+      <tr><td>A. 回授要在哪個層級？</td><td>模型內部（連續）／模型之間（符號）／混合</td><td>要可控訓練深度推理→內部；要異質視角與可解釋性→之間</td></tr>
+      <tr><td>B. 主軸是深度還是廣度？</td><td>深度（同權重反覆）／廣度（多模型並行）</td><td>單領域多步→深度；跨領域異質→廣度。<b>建議先選一個主軸</b></td></tr>
+      <tr><td>C. 能否承受無收斂保證？</td><td>深度須構造保證 ρ&lt;1／廣度須硬性界／廣度遞迴須證明小增益</td><td>除非能證明收斂條件，否則禁止離散 LLM 遞迴</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>53. 五條硬性不變量（設計憲法）</h2>
+  <p>這些是前 20 篇反覆驗證的「犯了一定壞」的規則，設計時列為檢核表：</p>
+  <ol>
+    <li><b>回授矩陣的譜半徑必須構造性 &lt; 1</b>——離散動態系統收斂 ⇔ ρ(A)&lt;1。用連續負對角＋ZOH 離散化，或任何保證特徵值在單位圓內的參數化。驗證：<code>torch.linalg.eigvals(A).abs().max() &lt; 1</code>。</li>
+    <li><b>持續注入的訊號必須有界</b>——BIBO 穩定要求有界輸入。確認注入源不會產生無界值（如未正規化的累積量）。</li>
+    <li><b>位置式停止或硬性深度界</b>——過度思考會讓品質變差。偏好可學的 ACT（按難度自適應），這是 Mythos 相對 Fusion 的獨特優勢。</li>
+    <li><b>若用 KV 快取，每個迴圈深度必須有獨立鍵且跑滿</b>——提早跳出會讓某些深度的快取空缺，後續解碼找不到鍵。</li>
+    <li><b>若引入異質多源視角，必須有遞迴保護</b>——離散 LLM 呼叫的遞迴成本指數成長、無收斂保證。用 header／旗標標記深度，拒絕二次注入。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>54. 迴圈內部的五步管線（設計範本）</h2>
+  <p>OpenMythos 的五步管線是驗證過的範本，設計自己的回授區塊時可逐步決定「保留／替換」：</p>
+  <table>
+    <thead><tr><th>步</th><th>OpenMythos 做法</th><th>設計問題</th></tr></thead>
+    <tbody>
+      <tr><td>(a) 迴圈分化訊號</td><td>正弦索引嵌入</td><td>要不要讓每個迴圈「知道自己在第幾圈」？</td></tr>
+      <tr><td>(b) 注入凍結源</td><td>norm(h + e)</td><td>注入在正規化前還是後？加性還是條件式？</td></tr>
+      <tr><td>(c) 共享區塊運算</td><td>注意力＋MoE</td><td>MLA（長脈絡）或 GQA（低延遲）？FFN 要 MoE 嗎？</td></tr>
+      <tr><td>(d) 深度調適</td><td>LoRA＋clamp</td><td>要不要讓每個迴圈行為略不同？外推時怎麼辦？</td></tr>
+      <tr><td>(e) 穩定更新</td><td>LTI A·h+B·e+trans</td><td>更新規則如何保證收斂？</td></tr>
+      <tr><td>(f) 停止</td><td>ACT</td><td>要不要學停止機率？</td></tr>
+    </tbody>
+  </table>
+  <p>替換選項：(a) 可換成可學嵌入（增參數）；(c) 注意力選擇依尺度；(d) 可不用 LoRA（犧牲分化）；(f) 可不用 ACT（固定深度，失去自適應與過度思考防護）。</p>
+</section>
+
+<section>
+  <h2>55. 落地路線圖與常見陷阱</h2>
+  <div class="cols-2">
+    <div>
+      <h3>建議的推進順序</h3>
+      <ol>
+        <li>決定前提三問（錯了全盤重來）</li>
+        <li>寫下五條硬性不變量作為設計憲法</li>
+        <li>選骨架（內部深度／模型之間／混合）</li>
+        <li>決定五步管線的每步選項</li>
+        <li>定訓練策略（Parcae、優化器、平行）</li>
+        <li>定評估維度，先寫測試再寫實作</li>
+        <li>從最小尺度起步（小 dim、少迴圈）</li>
+        <li>逐步放大，每步重驗不變量</li>
+        <li>若混合，最後才加廣度層</li>
+        <li>持續監控：譜半徑、loss、負載、停止分布</li>
+      </ol>
+    </div>
+    <div>
+      <h3>十大常見陷阱</h3>
+      <ol>
+        <li>譜半徑用錯公式（一般 A 須 eigvals）</li>
+        <li>RoPE 在快取之後才套（重旋）</li>
+        <li>有快取時提早結束（破壞一致性）</li>
+        <li>LoRA 外推未 clamp（越界）</li>
+        <li>未設遞迴界（成本指數失控）</li>
+        <li>judge 用高溫（比對不可重現）</li>
+        <li>盲目堆疊深度×廣度（成本相乘）</li>
+        <li>資料越多越好（忽略 Parcae）</li>
+        <li>忽略記憶／推理偏見</li>
+        <li>optimizer 在 FSDP 前建（追蹤舊參數）</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>56. 設計的核心張力</h2>
+  <div class="note">
+    <b>一句話收斂</b>
+    回授 LLM 的設計，本質是在「可訓練的連續深度」與「可解釋的符號廣度」之間，依任務、成本、可解釋性需求做有意識的取捨，並用構造性不變量保證不發散、用停止機制防過度思考。OpenMythos 與 OpenRouter Fusion 不是二選一的對立，而是<b>同一個設計空間的兩個極點</b>。
+  </div>
+</section>
+</div>
+<!-- /PAGE: 17-design -->
+<!-- PAGE: 18-evidence -->
+<div class="doc-page" style="break-before:page">
+<section>
+  <h2>57. 證據來源與引用索引</h2>
+  <p>本報告所有主張皆附可追溯證據。以下分類整理原始研究筆記的引用來源。</p>
+</section>
+
+<section>
+  <h2>OpenMythos 程式碼證據</h2>
+  <p>所有 <code>open_mythos/*.py</code> 引用皆來自本倉庫實際原始碼，以 <code>檔案:行號</code> 形式標注，可直接跳轉。</p>
+  <table>
+    <thead><tr><th>檔案</th><th>引用內容</th></tr></thead>
+    <tbody>
+      <tr><td><code>open_mythos/main.py</code></td><td>核心架構全文 1085 行：MythosConfig（16-81）、GQAttention（177-276）、MLAttention（284-418）、Expert（426-453）、MoEFFN（456-533）、loop_index_embedding（541-570）、LoRAAdapter（578-619）、TransformerBlock（627-676）、LTIInjection（684-742）、ACTHalting（750-780）、RecurrentBlock（825-891）、OpenMythos（899-924）、forward（992-1034）、generate（1036-1085）</td></tr>
+      <tr><td><code>open_mythos/variants.py</code></td><td>mythos_1b … mythos_1t 七變體（9-198）、預算公式（3-6）</td></tr>
+      <tr><td><code>open_mythos/tokenizer.py</code></td><td>MythosTokenizer（預設 openai/gpt-oss-20b）</td></tr>
+      <tr><td><code>open_mythos/__init__.py</code></td><td>公開匯出（1-17）、已知瑕疵 load_tokenizer（52-53）</td></tr>
+      <tr><td><code>training/3b_fine_web_edu.py</code></td><td>FSDP＋AdamW 訓練設定、FineWebEduDataset（43-108）、optimizer 順序（316-321, 438-440）、梯度裁剪（508-514）、原子 checkpoint（236-248）</td></tr>
+      <tr><td><code>tests/test_main.py</code></td><td>穩定性測試（471-489，含 lr=1e3）、MLA 快取壓縮（308-315, 625-634）、深度外推（576-580）、快取一致性（582-590）、權重共享（569-570）</td></tr>
+      <tr><td><code>README.md</code>、<code>docs/open_mythos.md</code>、<code>AGENTS.md</code>、<code>pyproject.toml</code></td><td>核心假設、四條論證、穩定性、scaling laws、不變量、已知 doc/code 不一致</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>OpenRouter Fusion API 證據</h2>
+  <p>所有 API 引用皆來自 OpenRouter 官方文件，已透過 webfetch 實際抓取確認 HTTP 200：</p>
+  <table>
+    <thead><tr><th>文件</th><th>引用內容</th></tr></thead>
+    <tbody>
+      <tr><td>Server Tool</td><td><code>openrouter.ai/docs/guides/features/server-tools/fusion</code> — 定義、五階段、結構化 JSON、三級降級、web 工具貫穿、遞迴保護</td></tr>
+      <tr><td>Plugin</td><td><code>openrouter.ai/docs/guides/features/plugins/fusion</code> — 編號流程、compares not merges、preset 體系、參數表</td></tr>
+      <tr><td>Fusion Router</td><td><code>openrouter.ai/docs/guides/routing/routers/fusion-router</code> — mermaid 圖、別名、fusion-flash、成本線性、judge 恆溫 0、tool_choice、router 欄位</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>第三方論文出處</h2>
+  <table>
+    <thead><tr><th>論文</th><th>於專案中的出處</th></tr></thead>
+    <tbody>
+      <tr><td>Parcae（Prairie et al., 2026）scaling laws</td><td><code>README.md:302-311</code></td></tr>
+      <tr><td>Relaxed Recursive Transformers（Bae et al., 2024）</td><td><code>README.md:353-363</code></td></tr>
+      <tr><td>DeepSeekMoE（Dai et al., 2024）</td><td>main.py:456-533</td></tr>
+      <tr><td>GQA（Ainslie et al., 2023）</td><td>main.py:177-276</td></tr>
+      <tr><td>ACT（Graves, 2016）</td><td><code>docs/open_mythos.md:317</code></td></tr>
+      <tr><td>looping-based regularization（Saunshi et al., 2025）</td><td><code>README.md:349</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>原始研究筆記對照</h2>
+  <p>本報告整理自 <code>research/</code> 目錄共 21 篇循序漸進的繁體中文研究筆記（00 研究總索引、01–21 各篇主題、操作指南）。各篇章對應關係如下：</p>
+  <table>
+    <thead><tr><th>本報告</th><th>原始筆記</th></tr></thead>
+    <tbody>
+      <tr><td>Part I（第 4–11 章）</td><td>01–10：專案總覽、三階段架構、Config、LTI、注意力、MoE、迴圈分化、ACT、KV 快取生成</td></tr>
+      <tr><td>Part II（第 31–38 章）</td><td>11–14：Fusion 總覽、三入口、結構化分析、參數與遞迴保護</td></tr>
+      <tr><td>Part III（第 39–51 章）</td><td>15–20：典範對比、LTI 動態系統、機制映射、計算擴展、穩定性、訓練策略</td></tr>
+      <tr><td>Part IV（第 52–56 章）</td><td>21：設計文件（建構 Mythos 式回授 LLM）</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <b>本報告定位</b>
+    本報告以「不失真」為原則整理原始研究筆記的核心論述、表格與關鍵程式碼片段，並補入資訊圖表與中英對照詞彙表以利閱讀。詳細的逐行論證、完整程式碼與下篇預告等內容，請回查 <code>research/</code> 原始筆記。
+  </div>
+</section>
+
+<footer class="doc-footer">
+  <span>OpenMythos 與 OpenRouter Fusion 研究報告 · RR-2026-001</span>
+  <span>內部研究文件</span>
+</footer>
+</div>
+<!-- /PAGE: 18-evidence -->
+
+</body>
+</html>

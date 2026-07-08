@@ -1,0 +1,70 @@
+<section>
+  <h2>26. ACT 自適應計算時間</h2>
+  <p>「更多迴圈」並非總是更好——超過某個深度，過度遞迴會<b>降低</b>預測（隱藏狀態漂過解答進入雜訊，即 overthinking）。<code>ACTHalting</code>（<code>main.py:750-780</code>）讓<b>每個位置獨立</b>決定何時停止累積更新——極簡（一個線性層加 sigmoid），從當前隱藏狀態預測「本步停止機率」<code>p</code>。</p>
+</section>
+
+<section>
+  <h2>27. ACT 剩餘機率技巧與 still_running 閘門</h2>
+  <p>真正的學問在 <code>RecurrentBlock.forward</code> 的累積邏輯（<code>main.py:865-883</code>）。採用 Graves (2016) 的標準「remainder trick」，確保輸出是「跨迴圈隱藏狀態的加權和，權重和為 1」：</p>
+  <pre><code>p = self.act(h)                          # 本步停止機率 (B,T)
+still_running = ~halted                  # 還沒停的位置
+remainder = (1.0 - cumulative_p).clamp(min=0)    # 剩餘機率質量
+weight = torch.where(
+    cumulative_p + p >= self.cfg.act_threshold,  # 若累積+本步跨過門檻…
+    remainder,                                   # …就把剩餘全給它（最後一步）
+    p,                                           # 否則給本步機率
+)
+weight = weight * still_running.float()          # 已停位置權重歸零
+h_out = h_out + weight.unsqueeze(-1) * h         # 加權累加</code></pre>
+  <div class="note">
+    <b>OpenMythos 特有的修正：still_running 閘門</b>
+    若不乘上 <code>still_running</code>，已停止位置的 <code>remainder</code> 在停止後仍 &gt; 0，會被重複加進 <code>h_out</code>，破壞「只貢獻一次」的語意。這個閘門確保每個位置<b>恰好在停止那步</b>貢獻完剩餘質量，之後靜默。
+  </div>
+</section>
+
+<section>
+  <h2>28. ACT 帶來的性質與門檻取捨</h2>
+  <div class="cols-2">
+    <div>
+      <h3>三個性質</h3>
+      <ol>
+        <li><b>逐位置自適應</b>：同 batch 內簡單 token 早停、困難 token 跑滿深度，理論可帶來 2–3× 吞吐。</li>
+        <li><b>防過度思考</b>：收斂後停止累積，避免漂進雜訊。</li>
+        <li><b>理論 Turing 完備</b>：Graves (2016) 證明 ACT 讓模型 Turing 完備。</li>
+      </ol>
+    </div>
+    <div>
+      <h3>門檻取捨</h3>
+      <p><code>act_threshold</code> 預設 0.99（所有變體一致）。越接近 1：位置傾向跑更多步（更深推理），但更易過度思考；越低：提早停止更激進，省計算但可能沒想透。0.99 偏「讓它多想」，與 RDT「靠深度取勝」的哲學一致。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>29. KV 快取與自迴歸生成</h2>
+  <p><code>OpenMythos.generate</code>（<code>main.py:1036-1085</code>）用 KV 快取把解碼成本從 O(T²) 降到 O(T)/步。三個關鍵設計：第 0 步吃整段 prompt，之後只吃一個 token；<code>start_pos</code> 控制 RoPE 切片；<code>kv_cache</code> 是同一個 dict 跨步累積。每個迴圈深度有獨立 cache_key（<code>"recurrent_loop_{t}"</code>），所以有快取時即使全停也必須跑完所有迴圈，保證每個深度的鍵都被填入。</p>
+  <div class="note">
+    <b>深度外推兌現</b>
+    訓練用 <code>max_loop_iters</code>，測試時可傳更大的 <code>n_loops</code>。這靠兩個第 10 章談過的機制：<code>loop_index_embedding</code> 是純函數（任意定義域）；<code>LoRAAdapter</code> 的 clamp（不越界）。<code>generate(..., n_loops=8)</code> 可在生成時全域調整「思考深度」——簡單任務調小省時、困難任務調大求質。取樣用 temperature + top-k。
+  </div>
+</section>
+
+<section>
+  <h2>30. Part I 總回顧：十大不變量</h2>
+  <table>
+    <thead><tr><th>章</th><th>主題</th><th>核心不變量</th></tr></thead>
+    <tbody>
+      <tr><td>4</td><td>假設與總覽</td><td>RDT = 共享權重反覆運算</td></tr>
+      <tr><td>5</td><td>三階段資料流</td><td>凍結 e 每迴圈注入</td></tr>
+      <tr><td>6</td><td>Config 與變體</td><td>MLA 是所有正式變體預設</td></tr>
+      <tr><td>7</td><td>LTI 穩定性</td><td>ρ(A)&lt;1 構造保證</td></tr>
+      <tr><td>8</td><td>注意力</td><td>RoPE 先於快取</td></tr>
+      <tr><td>9</td><td>MoE</td><td>bias 只調選擇不進梯度</td></tr>
+      <tr><td>10</td><td>迴圈分化</td><td>LoRA clamp 支援深度外推</td></tr>
+      <tr><td>11</td><td>ACT</td><td>有快取時跑滿所有迴圈</td></tr>
+      <tr><td>11</td><td>生成與快取</td><td>每迴圈深度獨立 cache_key</td></tr>
+      <tr><td>11</td><td>權重共享</td><td>LM head 與嵌入共享</td></tr>
+    </tbody>
+  </table>
+  <p>這十個不變量構成 Part II–IV 的技術地基。下一篇開始轉向截然不同的機制——OpenRouter Fusion。</p>
+</section>

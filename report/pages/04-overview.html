@@ -1,0 +1,41 @@
+<section>
+  <h2>Part I 緒論：OpenMythos 專案與迴圈深度架構</h2>
+  <p>Part I（對應原始研究第 1–10 篇）完整覆蓋 OpenMythos 的運行與架構。本章先建立研究對象與核心假設，後續各章沿資料流逐一拆解三階段架構、穩定性、注意力、MoE、迴圈分化、ACT 與生成。</p>
+</section>
+
+<section>
+  <h2>1. 這是什麼專案</h2>
+  <p>OpenMythos 是一個 <span class="term">Python + PyTorch</span> 的研究函式庫，試圖「理論重構」<span class="en">（theoretical reconstruction）</span>Claude Mythos 模型的架構。套件目錄為 <code>open_mythos</code>（底線），發布名為 <code>open-mythos</code>（連字號）。它實作的是一種<span class="term">迴圈深度 Transformer</span><span class="en">（RDT）</span>，又稱 Looped Transformer，純粹基於公開研究與推測的社群重構。</p>
+  <p>它的核心假設（<span class="en">The Central Hypothesis</span>）：Claude Mythos 疑似是一個 RDT。與其堆疊數百層獨特層，它把其中一部分層回收、在同一個前向傳遞中跑多次。關鍵差異在於這<b>不是 chain-of-thought</b>——過程中沒有中間 token 輸出，所有推理都在單一次前向傳遞裡、於連續潛在空間中「沉默地」完成。</p>
+</section>
+
+<section>
+  <h2>2. 程式碼的事實地圖</h2>
+  <table>
+    <thead><tr><th>檔案</th><th>角色</th><th>關鍵類別</th></tr></thead>
+    <tbody>
+      <tr><td><code>open_mythos/main.py</code></td><td><b>正典實作</b>，所有公開匯出來自此處</td><td>OpenMythos, MythosConfig, RecurrentBlock, LTIInjection, ACTHalting, MoEFFN, MLAttention, GQAttention, LoRAAdapter, RMSNorm</td></tr>
+      <tr><td><code>open_mythos/variants.py</code></td><td>預設尺度變體</td><td>mythos_1b … mythos_1t（共 7 個）</td></tr>
+      <tr><td><code>open_mythos/tokenizer.py</code></td><td>HF 分詞器包裝</td><td>MythosTokenizer（預設 openai/gpt-oss-20b）</td></tr>
+      <tr><td><code>open_mythos/moda.py</code></td><td><b>獨立的實驗性</b> MoDA 模型</td><td>未被 <code>__init__.py</code> 匯出，不接在 OpenMythos 上</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <b>必須記住的已知瑕疵</b>
+    <code>open_mythos/__init__.py</code> 把 <code>load_tokenizer</code> 與 <code>get_vocab_size</code> 列入 <code>__all__</code>，但從未匯入或定義它們——<code>from open_mythos import load_tokenizer</code> 會直接 <code>ImportError</code>。研究與設計時不應依賴這兩個名字。此外 <code>main.py</code> 與 <code>moda.py</code> 是兩套平行實作，不可混為一談；本研究聚焦在正典的 <code>main.py</code>。
+  </div>
+</section>
+
+<section>
+  <h2>3. 三階段架構總覽</h2>
+  <p><code>OpenMythos</code> 類別（<code>main.py:899-924</code>）將運算分成三個功能區塊：</p>
+  <pre><code>[Prelude 前奏]   — prelude_layers 個標準 TransformerBlock，只跑一次
+      ↓
+[Recurrent Block]— 同一個 TransformerBlock 迴圈 T 次，每次注入 e
+      ↑_______↓    h_{t+1} = A·h_t + B·e + Transformer(h_t, e)
+      ↓
+[Coda 尾奏]      — coda_layers 個標準 TransformerBlock，只跑一次
+      ↓
+輸出 logits</code></pre>
+  <p>更新規則中，<code>e</code> 是 Prelude 結束後被<b>凍結</b>的編碼輸入，在每一個迴圈步都重新注入，用來防止隱藏狀態隨深度漂移。這個「持續注入原訊號」的設計，正是本系列後半對照 OpenRouter Fusion「整合」機制時的核心錨點（見 Part III 第 17 篇映射）。</p>
+</section>

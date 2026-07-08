@@ -1,0 +1,61 @@
+<section>
+  <h2>47. 推理期計算擴展：迴圈數 vs 模型數</h2>
+  <p>「test-time scaling」泛指推理時花更多計算換更好答案。OpenMythos 與 Fusion 代表兩個正交的軸：深度擴展（n_loops↑）與廣度擴展（panel 數 N↑），兩者可獨立調，理論上也能組合。</p>
+</section>
+
+<section>
+  <h2>48. Mythos 深度：可預測的飽和指數衰減</h2>
+  <p>Parcae 的 scaling laws 給出明確經驗規律：每多一個迴圈品質提升，但<b>邊際增益遞減</b>，呈飽和指數曲線，與 CoT 的「想更多步」邊際遞減同構。成本上，每加一個迴圈＝多跑一次 RecurrentBlock，<b>參數量不變</b>：</p>
+  <pre><code>成本(n_loops) ∝ n_loops      （線性 FLOPs）
+參數量(n_loops) = 常數        （不隨迴圈增）</code></pre>
+  <p>這是 Mythos 最迷人的性質：<b>推理期加深度「幾乎免費」（只花計算，不花記憶體／參數）</b>。飽和的原因有二：ACT 讓多數位置在收斂後停止（加迴圈對已收斂位置無效）；過度思考讓超過某深度品質反而微降。關鍵是推理時可把 n_loops 調到超過訓練值（深度外推），曲線在訓練範圍之外仍延伸。</p>
+</section>
+
+<section>
+  <h2>49. Fusion 廣度：線性成本、收益受異質性支配</h2>
+  <p>總呼叫＝1（outer）＋ N（panel）＋ 1（judge），預設 N=3 → 約 4–5×。Fusion 文件沒給像 Parcae 那樣精確的 scaling law，但可從機制推論邊際遞減來源：異質性飽和（新加模型若與既有模型高度相似，邊際資訊量低）；盲區收斂（主要視角覆蓋後剩餘盲區很少）；judge 能力上限（比對 N 個回應的難度隨 N 增）。遞減速率取決於<b>你選的模型有多異質</b>，不像 Mythos 的指數衰減那樣可預測。</p>
+  <div class="note">
+    <b>什麼時候該深、什麼時候該廣</b>
+    單一領域、需多步推理（數學、規劃）→ 深（同源視角反覆修正足夠，成本幾乎免費）。跨領域、需異質觀點（研究、批判、比較）→ 廣（異質性是本質需求，單模型難以合成；並行性利於延遲）。出錯成本極高（醫療、法律）→ 廣＋深。低延遲 agent 輪次 → 廣（fast preset）。組合成本相乘（N×迴圈數），應先選主軸，再視需要補另一個。
+  </div>
+</section>
+
+<section>
+  <h2>50. 穩定性與過度思考</h2>
+  <p>兩個機制都會在「想太多」時退化，只是退化方式不同。</p>
+  <div class="cols-2">
+    <div>
+      <h3>Mythos 的三層防護</h3>
+      <table>
+        <thead><tr><th>失敗</th><th>防護</th></tr></thead>
+        <tbody>
+          <tr><td>發散</td><td>構造保證 ρ(A)&lt;1</td></tr>
+          <tr><td>過度思考</td><td>ACT 學習停止</td></tr>
+          <tr><td>外推失效</td><td>LoRA clamp 安全退化</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Fusion 的三層防護</h3>
+      <table>
+        <thead><tr><th>失敗</th><th>防護</th></tr></thead>
+        <tbody>
+          <tr><td>panel 冗餘</td><td>異質選模</td></tr>
+          <tr><td>judge 過載</td><td>節流＋恆溫 0</td></tr>
+          <tr><td>遞迴失控</td><td>硬性單層</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p>對稱點：都防發散、防過載、防退化。不對稱點：<b>Mythos 的停止是「學出來的」（ACT 學停止機率），Fusion 的界是「設定的」（固定單層、固定 token 上限）</b>。這讓 Mythos 能「按問題難度自適應」，Fusion 則是「一刀切的工程界」。好的回授系統應同時有構造上不可能發散（ρ&lt;1 類）與路徑上能降級／停止（ACT／token 上限類）。</p>
+</section>
+
+<section>
+  <h2>51. 訓練與資料策略</h2>
+  <p>訓練腳本 <code>training/3b_fine_web_edu.py</code> 用 FSDP＋AdamW 在 FineWeb-Edu 上預訓練 3B（seq_len 2048、目標 30B tokens、LR 3e-4 cosine decay、bf16）。目標 30B 是「Chinchilla 調整後」的——因為迴圈架構的有效計算量大於參數量暗示的。</p>
+  <div class="note">
+    <b>Parcae 的核心發現：迴圈與資料的權衡</b>
+    在固定 FLOP 預算下，「多迴圈＋少資料」比「少迴圈＋多資料」更省 loss。兩個軸（迴圈數、token 數）各有冪律，指數跨尺度一致。這是反直覺的——把計算花在「讓同一批資料被反覆深加工」比「看更多淺資料」更有效。證據：770M 參數的迴圈模型達到 1.3B 固定深度 Transformer 的下游品質——<b>約一半參數達同品質</b>。
+  </div>
+  <p>迴圈模型結構上偏推理、弱記憶（looping improves reasoning but can hurt memorization）。緩解：looping-based regularization——對推理任務用強迴圈約束、對檢索任務放鬆。Fusion 端的「訓練」其實是編排——panel 與 judge 都是現成模型，成本在推理而非訓練。</p>
+</section>

@@ -1,0 +1,40 @@
+<section>
+  <h2>執行摘要</h2>
+  <p>本研究的核心張力，是兩種層級迥異、卻目標相似的收斂機制：<span class="term">單模型反覆運算</span>（OpenMythos 迴圈深度）與<span class="term">多模型並行審議</span>（OpenRouter Fusion）。兩者都在解同一個問題——「如何用多次計算換取更好的單一答案」，但「多次」的單位完全不同。</p>
+  <div class="note">
+    <b>一句話結論</b>
+    Mythos 在單一模型的連續潛在空間裡反覆運算，深度可外推、成本幾乎免費、靠譜半徑 ρ(A)&lt;1 構造性保證收斂；Fusion 在多個模型之間透過自然語言協調，審議限於單層、成本線性增長、靠遞迴保護與三級降級容錯。兩者不是二選一的對立，而是同一個設計空間的兩個極點。
+  </div>
+</section>
+
+<section>
+  <h2>OpenMythos：深度來自「同一組權重跑很多次」</h2>
+  <p>OpenMythos 是對 Claude Mythos 模型架構的「理論重構」（<span class="en">theoretical reconstruction</span>），純粹基於公開研究與推測，不附屬於也不受 Anthropic 背書。它實作的核心假設是：<span class="term">Claude Mythos 疑似是一個 RDT</span>——與其堆疊數百層獨特層，它把其中一部分層回收、在同一個前向傳遞中跑多次。相同的權重、更多的迴圈、更深的思考。</p>
+  <p>關鍵在於這<b>不是 chain-of-thought（CoT，思維鏈）</b>。過程中沒有中間 token 輸出，所有推理都在單一次前向傳遞裡、於連續潛在空間<span class="en">（continuous latent space）</span>中「沉默地」完成。此假設有四條支撐論證：</p>
+  <table>
+    <thead>
+      <tr><th>論證</th><th>意涵</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>系統化泛化<span class="en">（systematic generalization）</span></td><td>迴圈 Transformer 能處理訓練時沒見過的知識組合；能力是「相變」式出現</td></tr>
+      <tr><td>深度外推<span class="en">（depth extrapolation）</span></td><td>訓練 5 步推理、測試 10 步仍能成功——靠推理期跑更多迴圈</td></tr>
+      <tr><td>潛在思考 = 隱式 CoT</td><td>每個迴圈約等於一步 CoT，但在連續空間進行；可同時編碼多條路徑</td></tr>
+      <tr><td>無參數爆炸<span class="en">（no parameter blow-up）</span></td><td>k 層跑 L 次可達 kL 層品質，但參數量只有 k 層</td></tr>
+    </tbody>
+  </table>
+  <p>架構採三階段分工：<span class="term">前奏</span><span class="en">（Prelude）</span>→ <span class="term">迴圈區塊</span><span class="en">（Recurrent Block）</span>→ <span class="term">尾奏</span><span class="en">（Coda）</span>。其核心更新規則為 <code>h_{t+1} = A·h_t + B·e + Transformer(h_t, e)</code>，其中凍結的編碼輸入 <code>e</code> 在每個迴圈以 <code>B·e</code> 重新注入，防止隱藏狀態漂移。</p>
+</section>
+
+<section>
+  <h2>OpenRouter Fusion：廣度來自「多個異質模型並行」</h2>
+  <p>Fusion 是一個伺服器端工具<span class="en">（server tool）</span>，任何模型都可呼叫。被呼叫時，一組模型（panel，最多 8 個）並行回答，附帶網路搜尋能力；一個判斷模型（judge）<b>比對而非合併</b><span class="en">（compares, not merges）</span>它們的回應，產出結構化 JSON（共識／矛盾／洞見／盲區），最後由你的模型（outer）撰寫最終答案。</p>
+  <div class="note">
+    <b>關鍵設計決定</b>
+    Fusion 被「設計成單層」——遞迴保護（recursion guard）禁止 panel 與 judge 再呼叫自己。每次呼叫帶 <code>x-openrouter-fusion-depth</code> header 標記深度，plugin 拒絕第二次注入。這與 Mythos「鼓勵無限加迴圈」形成最尖銳對比：連續空間靠穩定性條件自然收斂可深，離散呼叫空間成本指數成長必須淺。
+  </div>
+</section>
+
+<section>
+  <h2>研究收斂：設計空間的兩個極點</h2>
+  <p>經過理論整合，本研究提出「<span class="term">疊代收斂器</span>」<span class="en">（iterative convergence operator）</span>的統一抽象，把兩者都視為「把外部視角融進推理狀態」的收斂算子。Part IV 的設計文件綜合全部證據，回答：「如果我要從零打造一個具備 Mythos 式響應與回授的 LLM，該從哪裡開始、要做哪些決定？」每一條設計建議都回指前篇證據，確保可追溯、可驗證。</p>
+</section>

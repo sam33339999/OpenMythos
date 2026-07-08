@@ -1,0 +1,75 @@
+<section>
+  <h2>8. MythosConfig：唯一的設定入口</h2>
+  <p><code>MythosConfig</code> 是一個 <code>@dataclass</code>（<code>main.py:16-81</code>），所有超參數都集中在此。<code>OpenMythos.__init__</code> 只接收一個 <code>cfg: MythosConfig</code>，每個子模組都從同一份 <code>cfg</code> 讀自己需要的欄位。核心欄位：</p>
+  <div class="cols-2">
+    <table>
+      <thead><tr><th>欄位</th><th>預設</th><th>意義</th></tr></thead>
+      <tbody>
+        <tr><td><code>vocab_size</code></td><td>32000</td><td>詞表大小</td></tr>
+        <tr><td><code>dim</code></td><td>2048</td><td>模型隱藏維度</td></tr>
+        <tr><td><code>n_heads</code></td><td>16</td><td>query 注意力頭數</td></tr>
+        <tr><td><code>n_kv_heads</code></td><td>4</td><td>KV 頭數（僅 GQA）</td></tr>
+        <tr><td><code>max_loop_iters</code></td><td>16</td><td>推理時預設迴圈深度 T</td></tr>
+        <tr><td><code>prelude_layers</code></td><td>2</td><td>迴圈前標準層數</td></tr>
+        <tr><td><code>coda_layers</code></td><td>2</td><td>迴圈後標準層數</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>欄位</th><th>預設</th><th>意義</th></tr></thead>
+      <tbody>
+        <tr><td><code>attn_type</code></td><td>"mla"</td><td>mla / gqa 分派</td></tr>
+        <tr><td><code>kv_lora_rank</code></td><td>512</td><td>[MLA] 壓縮 KV 潛在維度</td></tr>
+        <tr><td><code>n_experts</code></td><td>64</td><td>路由專家總數</td></tr>
+        <tr><td><code>n_shared_experts</code></td><td>2</td><td>恆啟動共享專家數</td></tr>
+        <tr><td><code>n_experts_per_tok</code></td><td>4</td><td>每 token 選 top-K</td></tr>
+        <tr><td><code>act_threshold</code></td><td>0.99</td><td>ACT 累積停止門檻</td></tr>
+        <tr><td><code>lora_rank</code></td><td>16</td><td>每迴圈深度 LoRA 秩</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>9. 七個預設變體：1B 到 1T</h2>
+  <p><code>open_mythos/variants.py</code> 提供 7 個工廠函式，各自回傳調好數值的 <code>MythosConfig</code>。從小到大讀這張表，能歸納出 OpenMythos 的擴展策略：</p>
+  <table>
+    <thead><tr><th>變體</th><th class="num">dim</th><th class="num">專家數</th><th class="num">expert_dim</th><th class="num">迴圈數</th><th>上下文</th><th>最大輸出</th></tr></thead>
+    <tbody>
+      <tr><td>mythos_1b</td><td class="num">2048</td><td class="num">64</td><td class="num">2048</td><td class="num">16</td><td>4k</td><td>4k</td></tr>
+      <tr><td>mythos_3b</td><td class="num">3072</td><td class="num">64</td><td class="num">4096</td><td class="num">16</td><td>4k</td><td>4k</td></tr>
+      <tr><td>mythos_10b</td><td class="num">4096</td><td class="num">128</td><td class="num">5632</td><td class="num">24</td><td>8k</td><td>4k</td></tr>
+      <tr><td>mythos_50b</td><td class="num">6144</td><td class="num">256</td><td class="num">9728</td><td class="num">32</td><td>8k</td><td>4k</td></tr>
+      <tr><td>mythos_100b</td><td class="num">8192</td><td class="num">256</td><td class="num">13568</td><td class="num">32</td><td>1M</td><td>128k</td></tr>
+      <tr><td>mythos_500b</td><td class="num">12288</td><td class="num">512</td><td class="num">23040</td><td class="num">48</td><td>1M</td><td>128k</td></tr>
+      <tr><td>mythos_1t</td><td class="num">16384</td><td class="num">512</td><td class="num">34560</td><td class="num">64</td><td>1M</td><td>128k</td></tr>
+    </tbody>
+  </table>
+  <figure><!--SVG: svg/variants.svg--></figure>
+  <figcaption>圖 2　迴圈深度隨規模單調上升——RDT 最獨特的擴展軸：模型越大、預設「想得越深」</figcaption>
+</section>
+
+<section>
+  <h2>10. 可觀察的尺度法則</h2>
+  <div class="cols-2">
+    <div>
+      <p>從變體表能歸納出五條擴展策略（也是 Part III 訓練策略的依據）：</p>
+      <ol>
+        <li><b>dim 約略 ×√2 成長</b>：每兩階約翻倍，決定每層計算量。</li>
+        <li><b>專家數在 50B 後才大幅增加</b>：廣度被當作大模型的差異化能力。</li>
+        <li><b>迴圈數單調上升</b>（16→64）：一般 Transformer 不存在的擴展軸。</li>
+        <li><b>上下文只在 100B 跳到 1M</b>：長脈絡是最大規模才啟用的能力。</li>
+        <li><b>共享專家 2→8</b>、<b>每 token 啟動 4→8</b>：越大越強調共用知識。</li>
+      </ol>
+    </div>
+    <div class="note">
+      <b>參數預算公式</b>
+      <code>total ≈ embed + prelude/coda 稠密區塊 + recurrent MLA + MoE</code><br>
+      <code>MoE = 3 * dim * expert_dim * (n_experts + n_shared * n_experts_per_tok)</code><br>
+      <code>expert_dim</code> 是從「扣除其他項後的剩餘預算」反解出來的，讓總參數對齊目標量級。
+    </div>
+  </div>
+  <div class="note">
+    <b>已知 doc/code 不一致</b>
+    所有變體的 <code>attn_type</code> 都是 <code>"mla"</code>，與 README「Model Variants」範例誤稱 <code>mythos_7b()</code>（根本不存在）的 GQA 框架不一致。實際可用的是上表 7 個變體，全部使用 MLA。
+  </div>
+</section>

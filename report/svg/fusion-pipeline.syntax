@@ -1,0 +1,16 @@
+infographic sequence-steps-simple
+data
+  title Fusion 多模型審議五階段（Five-Stage Pipeline）
+  lists
+    - label 注入工具
+      desc 模型讀 prompt 判斷是否多方視角
+    - label Panel 並行
+      desc 最多 8 模型同時回答＋查網路
+    - label Judge 比對
+      desc 比對非合併，產結構化 JSON
+    - label 結構分析
+      desc 共識／矛盾／洞見／盲區
+    - label 寫最終答案
+      desc outer 模型基於分析撰寫
+theme
+  colorPrimary #1e4e79

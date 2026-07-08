@@ -1,0 +1,47 @@
+<section>
+  <h2>Part II 緒論：OpenRouter Fusion 多模型審議</h2>
+  <p>Part II（對應原始研究第 11–15 篇）轉向一個截然不同的機制。Part I 用十篇拆解了 OpenMythos 的「單模型反覆運算」；從此起是「多模型並行、judge 收斂」。<code>openrouter:fusion</code> 伺服器端工具賦予任何模型多模型審議<span class="en">（multi-model deliberation）</span>能力。</p>
+</section>
+
+<section>
+  <h2>31. Fusion 是什麼</h2>
+  <p>當你的模型判斷某個 prompt 值得多方視角時，它呼叫此工具——一組模型（panel，最多 8 個）並行回答，附帶 <code>web_search</code> 與 <code>web_fetch</code>；一個判斷模型（judge）比對回應，產出結構化分析，最後由你的模型寫出最終答案。</p>
+  <figure><!--SVG: svg/fusion-pipeline.svg--></figure>
+  <figcaption>圖 4　Fusion 五階段管線：注入工具 → 模型決定 → Panel 並行 → Judge 比對 → 寫最終答案</figcaption>
+</section>
+
+<section>
+  <h2>32. 五階段管線詳解</h2>
+  <ol>
+    <li><b>注入工具</b>：若用 <code>model: "openrouter/fusion"</code> 別名，router 把別名解析成真實模型並掛上 <code>openrouter:fusion</code> 工具。</li>
+    <li><b>模型決定是否呼叫</b>：你的模型讀完 prompt，自己判斷這題值不值得「多方視角」。</li>
+    <li><b>Panel 並行回答</b>：一組模型同時回答，每個都帶 <code>web_search</code> 與 <code>web_fetch</code>。</li>
+    <li><b>Judge 比對（不融合）</b>：judge 收到所有 panel 回應，<b>比對而非合併</b><span class="en">（compares, not merges）</span>，產出結構化 JSON。</li>
+    <li><b>你的模型寫最終答案</b>：拿到結構化分析後，由你的模型（outer）撰寫最終回覆。</li>
+  </ol>
+  <div class="note">
+    <b>關鍵語意區別</b>
+    judge 是 compares, not merges——它不做加權平均或多數決；它把「多數模型同意的」當高信心共識、標出分歧、保留單一模型的獨特洞見、點出無人涵蓋的盲區。最終答案由你的模型基於這份分析寫出，所以「結果不是簡單多數決」。
+  </div>
+</section>
+
+<section>
+  <h2>33. 與 OpenMythos 迴圈的初步對照</h2>
+  <table>
+    <thead><tr><th>維度</th><th>OpenMythos 迴圈</th><th>OpenRouter Fusion</th></tr></thead>
+    <tbody>
+      <tr><td>誰在反覆</td><td>同一個模型，同一組權重</td><td>多個不同模型，各跑一次</td></tr>
+      <tr><td>「深度」來源</td><td>迴圈次數 T</td><td>panel 模型數 N</td></tr>
+      <tr><td>「整合」發生在哪</td><td>每迴圈的 A·h + B·e（連續空間）</td><td>judge 一次性比對（符號空間）</td></tr>
+      <tr><td>中間產物</td><td>連續隱藏狀態（不可讀）</td><td>多段文字＋結構化 JSON（可讀）</td></tr>
+      <tr><td>時序</td><td>序列（一步接一步）</td><td>並行（panel 同時）再序列（judge）</td></tr>
+      <tr><td>成本軸</td><td>計算隨 T 線性長</td><td>呼叫數隨 N 線性長</td></tr>
+    </tbody>
+  </table>
+  <p>兩者都在做「把多個視角收斂成一個答案」，但<b>機制層級完全不同</b>：Mythos 在單一模型的潛在空間裡反覆；Fusion 在多個模型之間透過自然語言協調。</p>
+</section>
+
+<section>
+  <h2>34. 何時該用 Fusion</h2>
+  <p>官方指引明確：Fusion 為「研究問題、跨領域批判、比較型任務、出錯成本高」的場景設計。短小戰術型 prompt 不會觸發它（模型自己會判斷不值得）。要強制每次都跑，可設 <code>tool_choice: "required"</code>。</p>
+</section>

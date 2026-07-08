@@ -1,0 +1,12 @@
+infographic sequence-steps-simple
+data
+  title 三階段架構資料流（Three-Stage Pipeline）
+  lists
+    - label 前奏 Prelude
+      desc 標準區塊跑一次，產生凍結注入源 e
+    - label 迴圈區塊 Recurrent
+      desc 同一組權重反覆 T 次，每步注入 B·e
+    - label 尾奏 Coda
+      desc 標準區塊跑一次，映射回輸出空間
+theme
+  colorPrimary #1e4e79

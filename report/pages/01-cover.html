@@ -1,0 +1,45 @@
+<header class="doc-header">
+  <p class="doc-kicker">技術研究報告 · TECHNICAL RESEARCH REPORT</p>
+  <h1>OpenMythos 與 OpenRouter Fusion<br>迴圈深度推理與多模型審議之研究</h1>
+</header>
+<div class="doc-meta">
+  <span>文件編號<b>RR-2026-001</b></span>
+  <span>版本<b>v1.0</b></span>
+  <span>日期<b>2026-07-08</b></span>
+  <span>範圍<b>架構 × 理論 × 設計</b></span>
+</div>
+
+<main>
+  <section>
+    <h2>研究主軸</h2>
+    <p>本報告系統性整理 <span class="term">OpenMythos</span>（一個以 Python + PyTorch 實作的<span class="term">迴圈深度 Transformer</span><span class="en">（Recurrent-Depth Transformer, RDT）</span>研究函式庫）與 <span class="term">OpenRouter Fusion</span><span class="en">（一套多模型審議機制）</span>的完整研究成果，共 21 篇循序漸進的研究筆記，回答一個核心問題：</p>
+    <div class="note">
+      <b>中心論題</b>
+      如何在大型語言模型<span class="en">（LLM）</span>架構中建構「Mythos 式」的響應與回授（recurrence / feedback）機制——把「同一個模型反覆運算」的深度推理，與「多個模型並行、再由判斷模型收斂」的多模型審議，做系統化對照，並延伸出一份「如何從零開始打造此類機制」的設計藍圖。
+    </div>
+  </section>
+
+  <section>
+    <h2>四大部結構</h2>
+    <table>
+      <thead>
+        <tr><th>部</th><th>主題</th><th>涵蓋篇數</th><th>核心內容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Part I</td><td>OpenMythos 迴圈深度架構</td><td class="num">10 篇</td><td>從專案總覽、三階段架構到 KV 快取生成的完整拆解</td></tr>
+        <tr><td>Part II</td><td>OpenRouter Fusion 多模型審議</td><td class="num">5 篇</td><td>五階段管線、三種入口、結構化分析與遞迴保護</td></tr>
+        <tr><td>Part III</td><td>回授機制的理論與整合</td><td class="num">5 篇</td><td>LTI 動態系統數學、機制映射、擴展與穩定性</td></tr>
+        <tr><td>Part IV</td><td>設計文件</td><td class="num">1 篇</td><td>從零打造 Mythos 式回授 LLM 的完整設計藍圖</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>證據來源聲明</h2>
+    <p>本報告所有主張皆附可追溯證據。OpenMythos 程式碼以 <code>檔案:行號</code> 標注，來自本倉庫實際原始碼；OpenRouter API 引用官方文件 URL（已實際抓取確認 HTTP 200）；第三方論文引用 ArXiv 並標注於專案中的出處。術語一律以<span class="term">中英對照</span>方式標注，方便讀者對照原始文獻。</p>
+    <div class="note">
+      <b>閱讀建議</b>
+      全文以「不失真」為原則整理原始研究筆記。第一個遇到的英文術語會以括號標注原文，文末附完整中英對照詞彙表（見第 3 章）。建議依序閱讀：Part I 建立技術地基 → Part II 引入對照機制 → Part III 做理論整合 → Part IV 收斂為設計藍圖。
+    </div>
+  </section>
+</main>

@@ -1,0 +1,43 @@
+<section>
+  <h2>11. LTI 穩定注入與譜半徑</h2>
+  <p>RecurrentBlock 的第 (e) 步 <code>h = A·h + B·e + trans_out</code> 是穩定性的樞紐。本章拆解 <code>LTIInjection</code> 如何用動態系統理論讓這個遞迴「構造性地」永不發散——這是整個 OpenMythos 能被訓練起來的數學根基。</p>
+</section>
+
+<section>
+  <h2>12. 為什麼迴圈訓練會不穩定</h2>
+  <p>README「The Stability Problem」列出兩個主要失敗模式：<b>殘差爆炸</b>（隱藏狀態隨迴圈無界增長）與 <b>Loss 尖峰</b>（注入參數譜範數過大，訓練突然發散）。直觀原因：遞迴 <code>h_{t+1} = A·h_t + …</code> 把 A 反覆相乘，若 A 的特徵值有任何一個絕對值 ≥ 1，對應分量就以該特徵值為底呈指數增長，T 次後爆炸。</p>
+  <p>忽略非線性的 Transformer 項，遞迴退化為離散線性非時變（<span class="en">LTI</span>）系統：<code>h_{t+1} = A·h_t + B·e</code>。對此系統，穩定性<b>完全</b>由 A 的譜半徑 <code>ρ(A) := max |λ_i(A)|</code> 決定：ρ(A) &lt; 1 則穩定收斂，ρ(A) ≥ 1 則不穩定發散。</p>
+</section>
+
+<section>
+  <h2>13. 構造性保證：ρ(A)&lt;1 在數學上不可能被違反</h2>
+  <p><code>LTIInjection</code> 不靠正則化或梯度懲罰來「鼓勵」穩定，而是用參數化讓 ρ(A)&lt;1 在數學上不可能被違反。做法分三步：</p>
+  <pre><code># 步驟一：A 參數化為連續負對角矩陣
+A_continuous = Diag(-exp(log_A))     # log_A 可學，對角元素恆負
+
+# 步驟二：ZOH（零階保持）離散化
+A_discrete = exp(Δt · A_continuous)  # Δt = exp(log_dt) > 0，值落在 (0, 1)
+
+# 步驟三：log 空間計算避免數值 NaN
+def get_A(self):
+    return torch.exp(-torch.exp((self.log_dt + self.log_A).clamp(-20, 20)))</code></pre>
+  <p>關鍵數學鏈：<code>log_A</code> 任意實數 → <code>exp(log_A) &gt; 0</code> → <code>-exp(log_A) &lt; 0</code>（連續系統極點負實數，穩定）；<code>Δt &gt; 0</code>；<code>Δt·A_continuous</code> 對角元素仍負；<code>exp(負數) ∈ (0, 1)</code>（離散特徵值嚴格在單位圓內 → ρ(A)&lt;1）。在 log 空間相加可避免「0 × inf = NaN」的退化；<code>.clamp(-20, 20)</code> 保證任何梯度步長下都有限。</p>
+  <div class="note">
+    <b>激進梯度後仍穩定——直接驗證</b>
+    測試 <code>test_spectral_radius_stable_after_large_grad_step</code> 模擬 lr=1000 的 SGD 一步，然後斷言穩定性<b>仍然</b>成立。這正是「構造性保證」的含義——不依賴溫和的訓練設定。對角 A 可用 <code>A.max()</code> 當譜半徑（特徵值即對角元素），一般（非對角）矩陣必須用 <code>torch.linalg.eigvals(A).abs().max()</code>。
+  </div>
+</section>
+
+<section>
+  <h2>14. 更新規則的完整形式</h2>
+  <p><code>forward</code>（<code>main.py:727-742</code>）：<code>return A * h + self.B * e + transformer_out</code>。三項相加的語意：</p>
+  <table>
+    <thead><tr><th>項</th><th>語意</th></tr></thead>
+    <tbody>
+      <tr><td><code>A * h</code></td><td>衰減項——每通道獨立衰減（對角），衰減率受 (0,1) 約束</td></tr>
+      <tr><td><code>self.B * e</code></td><td>注入項——把凍結的 <code>e</code> 加回，防止漂移</td></tr>
+      <tr><td><code>transformer_out</code></td><td>非線性推理貢獻（注意力＋MoE 輸出）</td></tr>
+    </tbody>
+  </table>
+  <p>三者相加：<b>衰減的舊狀態 ＋ 重新注入的原訊號 ＋ 本輪新推理</b>。帶輸入的系統在 ρ(A)&lt;1 時是 BIBO 穩定<span class="en">（bounded-input bounded-output）</span>——持續注入有界訊號只會把狀態推向有界穩態，而非無界增長。這是「每迴圈注入 e 不爆炸」的數學根據（詳見 Part III 第 18 章）。</p>
+</section>

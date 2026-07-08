@@ -1,0 +1,47 @@
+<section>
+  <h2>18. MoE 前饋網路與專家路由</h2>
+  <p>前饋網路（FFN）依位置選用：RecurrentBlock 內的 TransformerBlock 用 <code>MoEFFN</code>（稀疏路由＋共享專家）；Prelude/Coda 用稠密 SwiGLU（<code>Expert</code>）。這是「廣度」（跨領域能力）的來源，與迴圈提供的「深度」互補。</p>
+</section>
+
+<section>
+  <h2>19. MoEFFN：兩類專家（DeepSeekMoE）</h2>
+  <div class="cols-2">
+    <div>
+      <h3>路由專家（routed experts）</h3>
+      <ul>
+        <li><code>n_experts</code> 個小 FFN（預設 64）。</li>
+        <li>每 token 由 router 選 top-<code>n_experts_per_tok</code> 個（預設 4）。</li>
+        <li>router 是 <code>nn.Linear(dim, n_experts)</code>。</li>
+        <li>啟動比例 4/64 = 6.25%。</li>
+      </ul>
+    </div>
+    <div>
+      <h3>共享專家（shared experts）</h3>
+      <ul>
+        <li><code>n_shared_experts</code> 個較大 FFN，<b>恆啟動</b>。</li>
+        <li>寬度刻意放大為 <code>expert_dim × n_experts_per_tok</code>。</li>
+        <li>吸收跨領域共用模式（語法、基本推理），避免路由專家重複學習。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>20. 無輔助損失的負載平衡（DeepSeek-V3 技巧）</h2>
+  <p>這是 <code>MoEFFN.forward</code>（<code>main.py:508-516</code>）最精巧的部分。關鍵在於 <b>bias 只影響「選誰」，不影響「權重多大」</b>：</p>
+  <pre><code>logits = self.router(flat)                              # (B*T, n_experts)，無偏
+scores = F.softmax(logits, dim=-1)
+_, topk_idx = (logits + self.router_bias).topk(self.topk, dim=-1)  # 選擇時加 bias
+topk_scores = scores.gather(-1, topk_idx)               # 但權重用無偏 scores
+topk_scores = topk_scores / topk_scores.sum(dim=-1, keepdim=True)  # 重正規化</code></pre>
+  <p><code>router_bias</code> 是 buffer 不是參數（<code>main.py:485</code>），訓練時外部更新（用來把使用不足的專家更常選到）。選 top-K 時用 <code>logits + router_bias</code>，但 gating 權重取自無偏的 <code>scores</code>。因此 bias <b>永遠不出現在梯度裡</b>——它只調整「派工」，不扭曲 loss 信號，避免了傳統 auxiliary loss 法會干擾主損失的問題。</p>
+  <div class="note">
+    <b>MoE 與迴圈的乘法效應</b>
+    隱藏狀態 <code>h_t</code> 跨迴圈演化，router 在每個深度可能選到不同專家子集，於是「每個迴圈計算上都是獨特的，即使共享權重」。深度（同一組權重反覆運算）× 廣度（每步從大專家池選小子集）= 極大的計算路徑多樣性，但參數量只來自一組共享層＋專家池。這也是 mythos_100b 以上能把專家數拉到 256–512、卻維持啟動比 ~1.5% 的原因。
+  </div>
+</section>
+
+<section>
+  <h2>21. 單一專家：SwiGLU</h2>
+  <p><code>Expert</code>（<code>main.py:426-453</code>）是基本積木：<code>down(silu(gate(x)) * up(x))</code>，即門控線性單元變體。它同時用作 MoE 內的個別路由專家，以及 Prelude/Coda 的稠密 FFN（後者 <code>expert_dim = dim * 4 // 3</code>）。測試 <code>test_shared_experts_always_fire</code> 用一個巧妙方式驗證共享專家具獨立貢獻：把所有路由專家權重清零，若輸出仍非零，表示共享專家具獨立貢獻。</p>
+</section>

@@ -1,0 +1,16 @@
+infographic compare-binary-horizontal-simple-vs
+data
+  title 注意力機制對比（MLA vs GQA）
+  lists
+    - children
+        - label MLA 多潛在注意力
+          desc 壓縮 KV 潛在，快取小 10–20×
+        - label 長脈絡首選
+          desc 1M 上下文顯存瓶頸唯一解
+    - children
+        - label GQA 分組查詢
+          desc 共享 KV 頭，快取省 4×
+        - label 低延遲首選
+          desc 吃 Flash Attention 2 最佳化
+theme
+  colorPrimary #1e4e79

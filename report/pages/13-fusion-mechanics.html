@@ -1,0 +1,75 @@
+<section>
+  <h2>35. Fusion 的三種入口</h2>
+  <p>官方提供三種使用入口，明言「三者打的是同一條 pipeline」，但控制粒度、使用姿態、適用場景各異。選對入口是落地整合的第一步。</p>
+  <table>
+    <thead><tr><th>入口</th><th>形式</th><th>定位</th><th>控制粒度</th></tr></thead>
+    <tbody>
+      <tr><td>Fusion Router</td><td><code>model: "openrouter/fusion"</code></td><td>把整條管線當成一個「模型」用</td><td>最省事，工具自動注入</td></tr>
+      <tr><td>Fusion Plugin</td><td><code>plugins: [{id: "fusion", ...}]</code></td><td>在已有 model 上掛「設定面板」</td><td>中等，可選 preset 與模型</td></tr>
+      <tr><td>Server Tool</td><td><code>tools: [{type: "openrouter:fusion", ...}]</code></td><td>直接宣告工具，模型自行決定何時呼叫</td><td>最高，可搭配其他工具</td></tr>
+    </tbody>
+  </table>
+  <p>Server Tool 的獨特優勢：因為 <code>tools</code> 是陣列，可以讓同一個模型同時擁有 fusion、web_search、自訂函式呼叫等工具，由模型自己調度。Router 別名只注入 fusion 一個工具，所以 <code>tool_choice: "required"</code> 等同強制 fusion。回應的 <code>model</code> 欄位回報實際處理請求的模型，要查 generation metadata 的 <code>router</code> 欄位才知是否走 Fusion。</p>
+  <div class="note">
+    <b>judge 恆為 temperature 0</b>
+    你設的 <code>temperature</code> 只影響 panel，不影響 judge。比對必須可重現、不摻隨機。這與 OpenMythos 的 LTI 注入「構造性穩定」有異曲同工之妙：兩者都把「該確定的部分釘死」。另：web 工具（<code>web_search</code>/<code>web_fetch</code>）在 panel 與 judge <b>兩端都啟用</b>，不是只有 panel 能查網路。
+  </div>
+</section>
+
+<section>
+  <h2>36. 結構化分析的五個欄位</h2>
+  <p>judge 產出的 <code>analysis</code> 物件有五個欄位，各自有明確語意。關鍵字是 <b>compares rather than merges</b>：judge 不把回應糊在一起，而是分類、標註出處、保留分歧。這讓 outer 模型拿到的是「附帶可信度標籤的證據集」，而非「失真的平均」。</p>
+  <table>
+    <thead><tr><th>欄位</th><th>語意</th><th>對 outer 模型的用處</th></tr></thead>
+    <tbody>
+      <tr><td><code>consensus</code></td><td>多數模型一致的論點，視為高信心</td><td>可放心採信、寫進答案</td></tr>
+      <tr><td><code>contradictions</code></td><td>模型間的分歧，附帶各方立場與出處</td><td>需 outer 裁決或並陳</td></tr>
+      <tr><td><code>partial_coverage</code></td><td>只有部分模型涵蓋的點</td><td>提示某論點證據不足</td></tr>
+      <tr><td><code>unique_insights</code></td><td>單一模型的獨特洞見</td><td>值得考量但未必代表共識</td></tr>
+      <tr><td><code>blind_spots</code></td><td>全體 panel 都沒談的主題</td><td>提示答案可能的缺口</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>37. 三級降級處理</h2>
+  <p>Fusion 的容錯設計是最值得借鏡的工程細節之一——「降級而非中斷」：</p>
+  <div class="cols-3">
+    <div class="note">
+      <b>部分 panel 失敗</b>
+      至少一個成功時仍 <code>status: "ok"</code>，附 <code>failed_models</code> 陣列說明誰失敗、為何。outer 可基於成功的回應繼續。
+    </div>
+    <div class="note">
+      <b>Judge 失敗（degradation）</b>
+      panel 成功但 judge 失敗時，工具<b>不</b>報錯，回 <code>status: "ok"</code> 並省略 <code>analysis</code>，只給原始 panel <code>responses</code>。
+    </div>
+    <div class="note">
+      <b>硬失敗</b>
+      只有「無法產出任何有用輸出」時回 <code>status: "error"</code>，附型別化 <code>failure_reason</code>（all_panels_failed / insufficient_credits / rate_limited / fusion_invocation_capped / unexpected_error）。
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>38. Preset 體系、成本與遞迴保護</h2>
+  <div class="cols-2">
+    <div>
+      <h3>Preset（&lt;task&gt;-&lt;tier&gt;）</h3>
+      <ul>
+        <li><code>general-high</code>：最強全用途 panel</li>
+        <li><code>general-budget</code>：便宜 panel＋前沿 judge</li>
+        <li><code>general-fast</code>：延遲同質 panel＋前沿 judge</li>
+      </ul>
+      <p>顯式 <code>analysis_models</code> 或 <code>model</code> 永遠蓋過 preset。<code>openrouter/fusion-flash</code> ≡ <code>general-fast</code> 預設。</p>
+    </div>
+    <div>
+      <h3>成本（線性）</h3>
+      <p>1（outer）＋ N（panel）＋ 1（judge）。預設 N=3 → 約 4–5× 單次成本。要省就縮 N 或用 budget preset。</p>
+      <p>對照 Mythos：加迴圈的邊際成本是「同一組權重多跑一次前向」，<b>參數不增長</b>；Fusion 加 panel 是「多呼叫一個完整模型」，<b>線性增加</b>。</p>
+    </div>
+  </div>
+  <div class="note">
+    <b>遞迴保護：Fusion 為何是單層</b>
+    每次 fusion 呼叫帶 <code>x-openrouter-fusion-depth</code> header 標記深度。panel 與 judge 模型<b>不能再呼叫</b> <code>openrouter:fusion</code>——plugin 在注入工具時檢查 header，若已是內層呼叫就拒絕第二次注入。若允許遞迴，深度 d、分支 N 的樹會產生 O(N^d) 次呼叫，成本與延遲瞬間失控。<b>Mythos 鼓勵「無限加迴圈」，Fusion 卻禁止 panel/judge 再呼叫自己</b>——連續空間靠穩定性條件自然收斂可深，離散呼叫空間成本指數成長必須淺。
+  </div>
+</section>

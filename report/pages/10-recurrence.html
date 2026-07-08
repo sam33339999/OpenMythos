@@ -1,0 +1,39 @@
+<section>
+  <h2>22. 迴圈索引嵌入與深度 LoRA</h2>
+  <p>共享權重要能「按深度分化」，否則被迫做萬能折衷。設想 TransformerBlock 跑 16 次，若每次輸入完全相同，權重只能學到「一個對所有深度都尚可的折衷」。OpenMythos 用兩個互補機制緩解：無參數的 <code>loop_index_embedding</code> 與少量參數的 <code>LoRAAdapter</code>。</p>
+</section>
+
+<section>
+  <h2>23. 機制一：loop_index_embedding（無參數）</h2>
+  <p><code>loop_index_embedding</code>（<code>main.py:541-570</code>）在隱藏狀態的前 <code>loop_dim</code> 個通道注入正弦訊號。這與 RoPE 在序列位置的邏輯同構，只是把「序列位置 m」換成「迴圈深度 t」。特點：純函數無可學參數；只動前 <code>loop_dim = dim // 8</code> 通道，其餘不變；不同迭代產生不同輸出。在 RecurrentBlock 內是「先注入迴圈索引、再加 e、再 norm」——三個訊號在進注意力前就疊好。</p>
+  <pre><code>def loop_index_embedding(h, loop_t, loop_dim, theta=10000.0):
+    freqs = 1.0 / (theta ** (torch.arange(0, loop_dim, 2, ...) / loop_dim))
+    angles = loop_t * freqs
+    emb = torch.cat([angles.sin(), angles.cos()], dim=-1)[:loop_dim]
+    emb_full = torch.zeros(h.shape[-1], ...)
+    emb_full[:loop_dim] = emb
+    return h + emb_full.unsqueeze(0).unsqueeze(0)</code></pre>
+</section>
+
+<section>
+  <h2>24. 機制二：LoRAAdapter（少量參數）</h2>
+  <p><code>LoRAAdapter</code>（<code>main.py:578-619</code>）源自 Relaxed Recursive Transformers（Bae et al., 2024）。它介於「純權重共享」與「每層獨立權重」之間：<code>delta(x, t) = (down(x) * scale[t]) @ B</code>。三個組件：<code>down</code>（Linear(dim, rank)）與 <code>B</code>（(rank, dim)）跨所有迴圈共享；<code>scale</code>（Embedding(max_loops, rank)）則<b>每個迴圈一個</b>元素級尺度向量。總參數開銷極小，但讓每個迴圈的有效變換略微不同。LoRA delta 加在 TransformerBlock 輸出上。</p>
+  <div class="note">
+    <b>深度外推的關鍵：clamp（必須保留的不變量）</b>
+    <code>LoRAAdapter.forward</code>：<code>t_idx = loop_t if loop_t &lt;= max_t else max_t</code>。推理時 <code>n_loops</code> 可以超過訓練的 <code>max_loop_iters</code>（深度外推），此時 Embedding 表沒有那麼多列，直接索引會越界。clamp 讓超出範圍的迭代<b>重用最後一個學到的尺度</b>，而非崩潰。這與 ACT 的「提早停止」互補：訓練範圍內靠 ACT 決定何時停，訓練範圍外靠 clamp 不讓 LoRA 越界。
+  </div>
+</section>
+
+<section>
+  <h2>25. 兩個機制的分工</h2>
+  <table>
+    <thead><tr><th>面向</th><th>loop_index_embedding</th><th>LoRAAdapter</th></tr></thead>
+    <tbody>
+      <tr><td>有無參數</td><td>無（純正弦）</td><td>有（低秩＋每迴圈尺度）</td></tr>
+      <tr><td>注入位置</td><td>隱藏狀態 h（進 block 前）</td><td>區塊輸出（出 block 後）</td></tr>
+      <tr><td>作用層次</td><td>提供「我在第幾圈」訊號</td><td>對輸出做深度相關微調</td></tr>
+      <tr><td>外推處理</td><td>函數定義域任意（無越界）</td><td>clamp 到最後一個尺度</td></tr>
+    </tbody>
+  </table>
+  <p>兩者疊加：進 block 前知道深度（索引嵌入），出 block 後再按深度微調（LoRA）。一前一後、一無參數一有參數，共同讓「迴圈不是單純重複」。對應五步管線的 (a) 與 (d)。</p>
+</section>

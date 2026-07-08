@@ -1,0 +1,16 @@
+infographic compare-binary-horizontal-simple-vs
+data
+  title 兩種收斂典範對比
+  lists
+    - children
+        - label Mythos 迴圈深度
+          desc 單模型反覆運算，連續空間
+        - label 可深·成本免費
+          desc 參數不增，靠 ρ(A)<1 收斂
+    - children
+        - label Fusion 多模型審議
+          desc 多模型並行，符號空間
+        - label 必淺·成本線性
+          desc 遞迴保護限單層，靠降級容錯
+theme
+  colorPrimary #1e4e79

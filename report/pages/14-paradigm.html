@@ -1,0 +1,55 @@
+<section>
+  <h2>Part III 緒論：回授機制的理論與整合</h2>
+  <p>Part III（對應原始研究第 16–20 篇）把 Part I 的 Mythos 與 Part II 的 Fusion 放上天平做系統化對比，用動態系統與控制理論的統一語言精確描述「回授」何時收斂、何時發散，並延伸到擴展成本、失敗模式與訓練策略。</p>
+</section>
+
+<section>
+  <h2>39. 典範對比：迴圈深度 vs 多模型審議</h2>
+  <p>兩者都在解同一個問題：<b>如何用「多次計算」換取「更好的單一答案」</b>。但「多次」的單位完全不同。</p>
+  <figure><!--SVG: svg/paradigm.svg--></figure>
+  <figcaption>圖 5　兩種收斂典範：Mythos 連續空間可深、成本免費；Fusion 符號空間必淺、成本線性</figcaption>
+  <table>
+    <thead><tr><th>維度</th><th>Mythos 迴圈深度</th><th>Fusion 多模型審議</th></tr></thead>
+    <tbody>
+      <tr><td>重複單位</td><td>同一組權重跑一次</td><td>一個完整模型呼叫一次</td></tr>
+      <tr><td>多樣性來源</td><td>權重共享＋每迴圈分化</td><td>不同模型本身（異質訓練）</td></tr>
+      <tr><td>整合發生在</td><td>連續潛在空間（A·h + B·e）</td><td>離散符號空間（judge 比對文字）</td></tr>
+      <tr><td>深度上限</td><td>可超過訓練值（深度外推）</td><td>硬性 1 層（遞迴保護）</td></tr>
+      <tr><td>成本曲線</td><td>邊際＝多一次前向（參數不增）</td><td>邊際＝多一次完整呼叫（線性增）</td></tr>
+      <tr><td>防發散</td><td>ρ(A)&lt;1 構造保證</td><td>recursion guard＋capped</td></tr>
+      <tr><td>提早停止</td><td>ACT 逐位置（可學）</td><td>無（panel 全跑完才 judge）</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>40. 三個關鍵反差</h2>
+  <div class="cols-3">
+    <div>
+      <h3>多樣性從哪來</h3>
+      <p>Mythos 的「多樣視角」全部來自單一模型的內部分化（索引嵌入、LoRA、MoE 路由）——<b>合成多樣性</b>。Fusion 來自多個不同模型本身，天然帶不同偏見與強項——<b>取樣既有異質性</b>。</p>
+    </div>
+    <div>
+      <h3>整合的表徵空間</h3>
+      <p>Mythos 是純粹的張量算術，人類無法直接讀懂在想什麼——<b>連續空間</b>。Fusion 是 judge 產出的 JSON——<b>符號空間</b>，人類可直接檢視。連續適合模型內部訓練；符號適合跨模型編排與人類審計。</p>
+    </div>
+    <div>
+      <h3>對「深度」的態度</h3>
+      <p>Mythos 鼓勵深度（推理時可把 n_loops 調超過訓練值）。Fusion 禁止深度（遞迴保護限單層）。一個敢深、一個必須淺，原因都在<b>成本與收斂性的本質差異</b>。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>41. 統一抽象：疊代收斂器</h2>
+  <p>撇開實作，兩者都可抽象成同一個數學骨架——<span class="term">疊代收斂器</span><span class="en">（iterative convergence operator）</span>：</p>
+  <pre><code>給定初始狀態 s_0 與輸入 x
+重複： s_{k+1} = F(s_k, x, views_k)
+直到收斂或達上限
+回傳 s_K</code></pre>
+  <p>Mythos：F = LTI 注入＋TransformerBlock，views_k = 同一模型在第 k 迴圈的條件化輸出。Fusion：F = judge＋outer，views_k = N 個 panel 模型的回應（只疊代一次，單層）。這個抽象讓我們能用統一的動態系統語言談兩者（見下章），並在設計時有共同的設計詞彙：狀態、更新函數、視角來源、停止條件。</p>
+  <div class="note">
+    <b>兩者其實在解同一族問題</b>
+    儘管機制迥異，兩者適用的任務高度重疊：研究問題、跨領域批判、比較型任務、出錯成本高。差別只在<b>在哪裡思考</b>：Mythos 在單一模型的潛在空間裡沉默地、連續地；Fusion 在多個模型之間透過自然語言、顯式地。
+  </div>
+</section>

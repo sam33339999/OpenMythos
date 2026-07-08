@@ -1,0 +1,54 @@
+<section>
+  <h2>42. 回授的數學基礎：LTI 動態系統</h2>
+  <p>把 Mythos 的 RecurrentBlock 更新規則寫成標準形式，忽略非線性的 Transformer 項，得到離散線性非時變（<span class="en">LTI</span>）系統：<code>h_{t+1} = A·h_t + B·u_t</code>（u_t = e，常數輸入）。這就是控制理論裡最基本的離散時間狀態空間模型——h 是狀態，A 是狀態轉移矩陣，B 是輸入矩陣。</p>
+</section>
+
+<section>
+  <h2>43. 收斂的充要條件：譜半徑</h2>
+  <p>對齊次系統 <code>h_{t+1} = A·h_t</code>，解為 <code>h_t = A^t·h_0</code>。「狀態不爆炸」的條件是 <code>A^t → 0</code>，這等價於譜半徑條件：<code>ρ(A) := max |λ_i(A)| &lt; 1</code>。把 A 對角化後，<code>A^t</code> 每個對角元素是 <code>λ_i^t</code>，<code>|λ_i| &lt; 1</code> 時該分量衰減到 0。</p>
+  <div class="note">
+    <b>帶輸入的系統：為什麼「注入」不破壞穩定性</b>
+    有輸入時若 ρ(A)&lt;1，系統是 BIBO 穩定：齊次解衰減，特解 <code>Σ A^k B u</code> 因幾何級數收斂而有界。這正是「在每個迴圈注入 B·e 不會讓系統爆炸」的數學根據——只要 ρ(A)&lt;1，持續注入有界訊號只會把狀態推向有界穩態附近。OpenMythos 的 e 來自 Prelude，是有限維張量，自然有界。
+  </div>
+</section>
+
+<section>
+  <h2>44. 非線性的考慮：三重保護</h2>
+  <p>真實更新有 <code>Transformer(h_t, e)</code> 這個非線性項。嚴格說，譜半徑條件是對線性近似成立的。為什麼實務上仍可靠？OpenMythos 的穩定性是「線性構造保證＋非線性小增益＋ACT 安全閥」的三重保護：</p>
+  <ol>
+    <li><b>Lipschitz 上界</b>：若 Transformer 塊是 Lipschitz 連續，且其常數 L 滿足 <code>ρ(A) + L &lt; 1</code>（小增益條件），非線性系統仍有收斂保證。</li>
+    <li><b>ACT 的安全閥</b>：即使偶爾偏離，ACT 讓位置在收斂後停止，避免長期累積偏離。</li>
+    <li><b>經驗</b>：lr=1e3 測試顯示，即使極端梯度步驟後 A 仍 &lt; 1，且訓練收斂。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>45. 把同一套語言套到 Fusion</h2>
+  <p>Fusion 不是線性系統，但可視為<b>單步迭代</b>的動態系統：<code>s_1 = F(s_0, x, {m_1(x), ..., m_N(x)})</code>。它只疊代一次（遞迴保護），所以<b>沒有「特徵值爆炸」的風險</b>——不存在 A^t 的累乘。但若假設性地允許遞迴，收斂性完全取決於 F 的「譜半徑」（複合算子的 Lipschitz 常數），而這對自然語言 LLM 是未知且不可控的——這正是 Fusion 用硬性單層界來規避的根本原因。<b>Mythos 靠構造保證 ρ&lt;1 可以放心遞迴；Fusion 無此保證所以禁止遞迴。</b>數學上完全一致。</p>
+  <table>
+    <thead><tr><th>設計選擇</th><th>必須回答的數學問題</th></tr></thead>
+    <tbody>
+      <tr><td>讓狀態遞迴</td><td>回授矩陣 ρ&lt;1 嗎？如何構造性保證？</td></tr>
+      <tr><td>持續注入訊號</td><td>注入項有界嗎？系統 BIBO 穩定嗎？</td></tr>
+      <tr><td>允許非線性</td><td>非線性項 Lipschitz 常數可控嗎？小增益成立嗎？</td></tr>
+      <tr><td>允許深度遞迴</td><td>線性譜半徑＋非線性 Lipschitz 夠小嗎？</td></tr>
+      <tr><td>離散 LLM 呼叫遞迴</td><td>有收斂保證嗎？沒有就必須設硬性深度界</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>46. 機制映射：注入 vs 整合</h2>
+  <p>把 Fusion judge 的「結構化整合」逐項對應到 Mythos 的「B·e 注入」。兩者都是「把外部視角融進推理狀態」的收斂算子，在抽象上同構，在實作上分歧：</p>
+  <table>
+    <thead><tr><th>維度</th><th>Mythos 注入</th><th>Fusion 整合</th></tr></thead>
+    <tbody>
+      <tr><td>視角來源</td><td>單一同源（凍結 e）</td><td>多個異質（panel 模型）</td></tr>
+      <tr><td>表徵空間</td><td>連續張量（可微、可反傳）</td><td>符號 JSON（可讀、可降級）</td></tr>
+      <tr><td>時序</td><td>反覆（每迴圈注入，積分式收斂）</td><td>單次（一次性裁決）</td></tr>
+      <tr><td>分歧處理</td><td>無顯式概念，融進單一狀態</td><td>顯式標記 contradictions</td></tr>
+      <tr><td>降級方式</td><td>預防式（ρ&lt;1 構造保證）</td><td>容錯式（三級降級路徑）</td></tr>
+    </tbody>
+  </table>
+  <p>三個可互相借鏡的設計元素：(1) 讓 Mythos 迴圈狀態攜帶「分歧標記」（提升可解釋性）；(2) 為注入路徑加降級（視角失效時退回其他視角）；(3) 為 Fusion 整合加「反覆修正」（允許 outer 多輪消化 judge 分析，在受限深度內）。</p>
+</section>

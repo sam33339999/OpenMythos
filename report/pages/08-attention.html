@@ -1,0 +1,41 @@
+<section>
+  <h2>15. 注意力機制：MLA 與 GQA</h2>
+  <p>注意力是可替換零件，靠 <code>cfg.attn_type</code> 分派（<code>main.py:649</code>）：<code>"mla"</code> → <code>MLAttention</code>；<code>"gqa"</code> → <code>GQAttention</code>。兩者都遵守同一個 <code>forward</code> 簽名，對上層完全透明。</p>
+  <figure><!--SVG: svg/mla-gqa.svg--></figure>
+  <figcaption>圖 3　MLA 與 GQA 的取捨：MLA 壓縮 KV 潛在（快取小 10–20×）適合長脈絡；GQA 吃 Flash Attention 2 適合低延遲</figcaption>
+</section>
+
+<section>
+  <h2>16. GQA：Grouped Query Attention</h2>
+  <p><code>GQAttention</code> 實作 Ainslie et al., 2023。query 頭數 <code>n_heads</code> 多於 key/value 頭數 <code>n_kv_heads</code>：每個 KV 頭被 <code>n_heads // n_kv_heads</code> 個 query 頭共享，把 KV 快取縮成該比例分之一，但保留完整 query 表達力。預設 16 query 頭 / 4 KV 頭，即快取省 4 倍。</p>
+  <div class="cols-2">
+    <div class="note">
+      <b>RoPE 先於快取（不變量）</b>
+      GQA 先對 Q、K 做 RoPE，<b>再</b>寫入快取（<code>main.py:236-243</code>）。快取值已帶位置編碼，取出時不必重旋。若違反此順序，解碼時會對已旋轉的鍵再旋一次，破壞相對位置語意。MLA 同樣遵守（<code>main.py:389-395</code>）。
+    </div>
+    <div class="note">
+      <b>Flash Attention 2 選用</b>
+      Flash Attention 只影響 <code>GQAttention</code>（<b>不</b>影響 MLA）。裝了 <code>flash-attn</code> 時原生支援 GQA（不需 repeat_interleave）；沒裝時靜默退回手動 SDPA，由 <code>_HAS_FLASH_ATTN</code> 旗標守護。透過 <code>[flash]</code> extra 安裝。
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>17. MLA：Multi-Latent Attention（DeepSeek-V2 風格）</h2>
+  <p><code>MLAttention</code> 是所有正式變體的選擇。核心洞見：與其快取完整的 K 與 V（各 <code>n_heads × head_dim</code> 每 token），不如把 KV 路徑壓縮過一個低秩潛在 <code>c_kv</code>，只快取這個潛在加上 RoPE 鍵；解碼時再用便宜的線性投影重建 K_nope 與 V。</p>
+  <pre><code># KV 路徑：壓縮 → 快取 → 重建
+x → kv_down (dim → kv_lora_rank + qk_rope_head_dim)
+     分成 c_kv（潛在，快取）與 k_rope_raw（跨頭共享）
+k_rope = RoPE(expand(k_rope_raw))   ← 快取前套 RoPE
+c_kv → kv_norm → kv_up → [k_nope | v]  每步重建
+k = cat(k_nope, k_rope)  每頭</code></pre>
+  <p>快取大小對比決定了 MLA 為何是大規模首選：</p>
+  <table>
+    <thead><tr><th>注意力</th><th>每層每 token 快取</th></tr></thead>
+    <tbody>
+      <tr><td>GQA</td><td><code>n_kv_heads × head_dim × 2</code></td></tr>
+      <tr><td>MLA</td><td><code>kv_lora_rank + n_heads × qk_rope_head_dim</code></td></tr>
+    </tbody>
+  </table>
+  <p>量產規模下 MLA 約小 <b>10–20 倍</b>——在 1M 上下文（mythos_100b 以上）這是「能不能塞得進去」的差別，而非「省不省錢」。測試 <code>test_mla_fewer_kv_cache_bytes</code> 用最小配置（dim=64）就成立，說明 MLA 的快取優勢在很小規模就顯現。<code>example.py</code> 與單測偏好 GQA 是因為簡單、快；正式變體清一色 MLA——尺度決定了 KV 快取是主導成本。</p>
+</section>

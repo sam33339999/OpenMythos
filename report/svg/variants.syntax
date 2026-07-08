@@ -1,0 +1,20 @@
+infographic chart-bar-plain-text
+data
+  title 迴圈深度擴展（1B→1T）
+  lists
+    - label 1B
+      value 16
+    - label 3B
+      value 16
+    - label 10B
+      value 24
+    - label 50B
+      value 32
+    - label 100B
+      value 32
+    - label 500B
+      value 48
+    - label 1T
+      value 64
+theme
+  colorPrimary #1e4e79

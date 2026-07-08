@@ -1,0 +1,72 @@
+<section>
+  <h2>57. 證據來源與引用索引</h2>
+  <p>本報告所有主張皆附可追溯證據。以下分類整理原始研究筆記的引用來源。</p>
+</section>
+
+<section>
+  <h2>OpenMythos 程式碼證據</h2>
+  <p>所有 <code>open_mythos/*.py</code> 引用皆來自本倉庫實際原始碼，以 <code>檔案:行號</code> 形式標注，可直接跳轉。</p>
+  <table>
+    <thead><tr><th>檔案</th><th>引用內容</th></tr></thead>
+    <tbody>
+      <tr><td><code>open_mythos/main.py</code></td><td>核心架構全文 1085 行：MythosConfig（16-81）、GQAttention（177-276）、MLAttention（284-418）、Expert（426-453）、MoEFFN（456-533）、loop_index_embedding（541-570）、LoRAAdapter（578-619）、TransformerBlock（627-676）、LTIInjection（684-742）、ACTHalting（750-780）、RecurrentBlock（825-891）、OpenMythos（899-924）、forward（992-1034）、generate（1036-1085）</td></tr>
+      <tr><td><code>open_mythos/variants.py</code></td><td>mythos_1b … mythos_1t 七變體（9-198）、預算公式（3-6）</td></tr>
+      <tr><td><code>open_mythos/tokenizer.py</code></td><td>MythosTokenizer（預設 openai/gpt-oss-20b）</td></tr>
+      <tr><td><code>open_mythos/__init__.py</code></td><td>公開匯出（1-17）、已知瑕疵 load_tokenizer（52-53）</td></tr>
+      <tr><td><code>training/3b_fine_web_edu.py</code></td><td>FSDP＋AdamW 訓練設定、FineWebEduDataset（43-108）、optimizer 順序（316-321, 438-440）、梯度裁剪（508-514）、原子 checkpoint（236-248）</td></tr>
+      <tr><td><code>tests/test_main.py</code></td><td>穩定性測試（471-489，含 lr=1e3）、MLA 快取壓縮（308-315, 625-634）、深度外推（576-580）、快取一致性（582-590）、權重共享（569-570）</td></tr>
+      <tr><td><code>README.md</code>、<code>docs/open_mythos.md</code>、<code>AGENTS.md</code>、<code>pyproject.toml</code></td><td>核心假設、四條論證、穩定性、scaling laws、不變量、已知 doc/code 不一致</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>OpenRouter Fusion API 證據</h2>
+  <p>所有 API 引用皆來自 OpenRouter 官方文件，已透過 webfetch 實際抓取確認 HTTP 200：</p>
+  <table>
+    <thead><tr><th>文件</th><th>引用內容</th></tr></thead>
+    <tbody>
+      <tr><td>Server Tool</td><td><code>openrouter.ai/docs/guides/features/server-tools/fusion</code> — 定義、五階段、結構化 JSON、三級降級、web 工具貫穿、遞迴保護</td></tr>
+      <tr><td>Plugin</td><td><code>openrouter.ai/docs/guides/features/plugins/fusion</code> — 編號流程、compares not merges、preset 體系、參數表</td></tr>
+      <tr><td>Fusion Router</td><td><code>openrouter.ai/docs/guides/routing/routers/fusion-router</code> — mermaid 圖、別名、fusion-flash、成本線性、judge 恆溫 0、tool_choice、router 欄位</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>第三方論文出處</h2>
+  <table>
+    <thead><tr><th>論文</th><th>於專案中的出處</th></tr></thead>
+    <tbody>
+      <tr><td>Parcae（Prairie et al., 2026）scaling laws</td><td><code>README.md:302-311</code></td></tr>
+      <tr><td>Relaxed Recursive Transformers（Bae et al., 2024）</td><td><code>README.md:353-363</code></td></tr>
+      <tr><td>DeepSeekMoE（Dai et al., 2024）</td><td>main.py:456-533</td></tr>
+      <tr><td>GQA（Ainslie et al., 2023）</td><td>main.py:177-276</td></tr>
+      <tr><td>ACT（Graves, 2016）</td><td><code>docs/open_mythos.md:317</code></td></tr>
+      <tr><td>looping-based regularization（Saunshi et al., 2025）</td><td><code>README.md:349</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>原始研究筆記對照</h2>
+  <p>本報告整理自 <code>research/</code> 目錄共 21 篇循序漸進的繁體中文研究筆記（00 研究總索引、01–21 各篇主題、操作指南）。各篇章對應關係如下：</p>
+  <table>
+    <thead><tr><th>本報告</th><th>原始筆記</th></tr></thead>
+    <tbody>
+      <tr><td>Part I（第 4–11 章）</td><td>01–10：專案總覽、三階段架構、Config、LTI、注意力、MoE、迴圈分化、ACT、KV 快取生成</td></tr>
+      <tr><td>Part II（第 31–38 章）</td><td>11–14：Fusion 總覽、三入口、結構化分析、參數與遞迴保護</td></tr>
+      <tr><td>Part III（第 39–51 章）</td><td>15–20：典範對比、LTI 動態系統、機制映射、計算擴展、穩定性、訓練策略</td></tr>
+      <tr><td>Part IV（第 52–56 章）</td><td>21：設計文件（建構 Mythos 式回授 LLM）</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <b>本報告定位</b>
+    本報告以「不失真」為原則整理原始研究筆記的核心論述、表格與關鍵程式碼片段，並補入資訊圖表與中英對照詞彙表以利閱讀。詳細的逐行論證、完整程式碼與下篇預告等內容，請回查 <code>research/</code> 原始筆記。
+  </div>
+</section>
+
+<footer class="doc-footer">
+  <span>OpenMythos 與 OpenRouter Fusion 研究報告 · RR-2026-001</span>
+  <span>內部研究文件</span>
+</footer>

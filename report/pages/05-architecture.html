@@ -1,0 +1,51 @@
+<section>
+  <h2>4. 三階段資料流：Prelude → Recurrent → Coda</h2>
+  <p><code>OpenMythos.forward</code>（<code>main.py:992-1034</code>）是唯一的前向入口。三個階段在 <code>__init__</code> 中被組裝：<code>prelude</code> 與 <code>coda</code> 是 <code>nn.ModuleList</code>（稠密 FFN），<code>recurrent</code> 是單一個 <code>RecurrentBlock</code>（內含 MoE FFN）。注意 Prelude 與 Coda <b>不用 MoE</b>，只有 Recurrent Block 內的 TransformerBlock 用 MoE。</p>
+  <figure><!--SVG: svg/architecture.svg--></figure>
+  <figcaption>圖 1　三階段架構資料流：一次性預處理 → 共享權重反覆 → 一次性收尾</figcaption>
+</section>
+
+<section>
+  <h2>5. Recurrent Block 的五步管線</h2>
+  <p><code>RecurrentBlock.forward</code>（<code>main.py:825-891</code>）跑最多 <code>n_loops</code> 次迭代，每次執行以下五步管線。每個子步對應一個專題（見後續各章）：</p>
+  <pre><code>for t in range(n_loops):
+    h_loop = loop_index_embedding(h, t, self.loop_dim)  # (a) 迴圈索引嵌入
+    combined = self.norm(h_loop + e)                    # (b) 加凍結 e 再正規化
+    trans_out = self.block(combined, freqs_cis, mask,   # (c) TransformerBlock
+                           kv_cache, cache_key=...)
+    trans_out = trans_out + self.lora(trans_out, t)     # (d) 深度 LoRA 微調
+    h = self.injection(h, e, trans_out)                 # (e) LTI 穩定更新
+    p = self.act(h)                                     # (f) ACT 停止機率
+    ... 累積權重、提早結束 ...</code></pre>
+  <table>
+    <thead><tr><th>步驟</th><th>機制</th><th>本章</th></tr></thead>
+    <tbody>
+      <tr><td>(a)</td><td><code>loop_index_embedding</code>（無參數正弦訊號）</td><td>第 10 章</td></tr>
+      <tr><td>(b)</td><td>凍結 <code>e</code> 注入（殘差相加，進正規化前）</td><td>本章＋第 17 章</td></tr>
+      <tr><td>(c)</td><td><code>TransformerBlock</code>（注意力＋MoE）</td><td>第 8、9 章</td></tr>
+      <tr><td>(d)</td><td><code>LoRAAdapter</code>（共享低秩＋每迴圈尺度）</td><td>第 10 章</td></tr>
+      <tr><td>(e)</td><td><code>LTIInjection</code>（h = A·h + B·e + trans_out）</td><td>第 7 章</td></tr>
+      <tr><td>(f)</td><td><code>ACTHalting</code>（逐位置停止機率）</td><td>第 11 章</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>6. 兩個隱性不變量</h2>
+  <div class="cols-2">
+    <div class="note">
+      <b>權重共享</b>
+      LM head 與嵌入表共享權重（<code>main.py:956</code>），<code>test_weight_tying</code> 驗證。整個 RecurrentBlock 是<b>一個</b> TransformerBlock 實例跑 n_loops 次——這是「k 層參數、kL 層品質」的來源。
+    </div>
+    <div class="note">
+      <b>有快取時不提早結束</b>
+      <code>RecurrentBlock.forward</code> 的提早結束有條件：<code>if halted.all() and kv_cache is None: break</code>。一旦有 KV 快取（生成模式），每個迴圈深度都必須跑完，後續解碼步才能在每個 cache_key 找到已填入的鍵。
+    </div>
+  </div>
+  <p>KV 快取用字串鍵區分各層，避免碰撞：<code>"prelude_0"</code>、<code>"recurrent_loop_3"</code>、<code>"coda_1"</code> 等。這套命名對自迴歸生成至關重要（第 11 章）。</p>
+</section>
+
+<section>
+  <h2>7. 為什麼 Prelude/Coda 不用 MoE</h2>
+  <p>「路由廣度」的價值在<b>反覆推理</b>的迴圈內——隱藏狀態 <code>h_t</code> 跨迴圈演化，router 在每個深度可能選到不同專家子集（第 9 章）。Coda 只跑一次，MoE 的稀疏路由好處有限，稠密 FFN 更直接。Prelude 的職責是把嵌入後的 token 序列「預處理」成穩定、資訊充分的表示 <code>e</code>；先讓 Prelude 用注意力融上下文，<code>e</code> 才攜帶「這整段輸入在說什麼」的語意。</p>
+</section>

@@ -1,0 +1,88 @@
+<section>
+  <h2>中英對照詞彙表</h2>
+  <p>本表收錄本報告使用的核心術語，以中英對照標注，便於讀者對照原始文獻與程式碼。術語分為架構、注意力、穩定性、Fusion、理論五大類。原文術語於正文中首次出現時以括號標注。</p>
+</section>
+
+<section>
+  <h2>架構與迴圈核心</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文原文</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>迴圈深度 Transformer</td><td>Recurrent-Depth Transformer (RDT)</td><td>又稱 Looped Transformer；將部分層回收、同一前向傳遞中跑多次</td></tr>
+      <tr><td>前奏</td><td>Prelude</td><td>迴圈前的標準 Transformer 區塊，產生凍結注入源 e</td></tr>
+      <tr><td>迴圈區塊</td><td>Recurrent Block</td><td>單一共享權重反覆運算 T 次，架構的心臟</td></tr>
+      <tr><td>尾奏</td><td>Coda</td><td>迴圈後的標準區塊，把潛在狀態映射回輸出空間</td></tr>
+      <tr><td>隱藏狀態</td><td>hidden state (h)</td><td>殘差流中的表示，每個迴圈被更新</td></tr>
+      <tr><td>凍結編碼輸入</td><td>frozen encoded input (e)</td><td>Prelude 結束時凍結的表示，每個迴圈以 B·e 注入</td></tr>
+      <tr><td>連續潛在空間</td><td>continuous latent space</td><td>隱藏狀態所在的高維空間，推理在此「沉默地」完成</td></tr>
+      <tr><td>深度外推</td><td>depth extrapolation</td><td>推理時 n_loops 可超過訓練值 max_loop_iters</td></tr>
+      <tr><td>權重共享</td><td>weight tying / sharing</td><td>LM head 與嵌入表共享權重；迴圈區塊共享同一組權重</td></tr>
+      <tr><td>模型變體</td><td>model variants</td><td>mythos_1b … mythos_1t 共七個預設尺度</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>注意力與前饋</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文原文</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>多潛在注意力</td><td>Multi-Latent Attention (MLA)</td><td>DeepSeek-V2 風格；壓縮 KV 潛在，快取小 10–20×</td></tr>
+      <tr><td>分組查詢注意力</td><td>Grouped Query Attention (GQA)</td><td>query 頭多於 KV 頭，靠共享省快取</td></tr>
+      <tr><td>旋轉位置編碼</td><td>Rotary Position Embedding (RoPE)</td><td>對 Q、K 套用，在寫入 KV 快取<b>之前</b></td></tr>
+      <tr><td>KV 快取</td><td>KV cache</td><td>把已算過的鍵值存下，把解碼成本從 O(T²) 降到 O(T)</td></tr>
+      <tr><td>快取鍵</td><td>cache_key</td><td>字串鍵區分各層與各迴圈深度，避免碰撞</td></tr>
+      <tr><td>混合專家前饋</td><td>Mixture-of-Experts FFN (MoE)</td><td>DeepSeekMoE；細粒度路由專家＋共享專家</td></tr>
+      <tr><td>路由專家</td><td>routed experts</td><td>每 token 由 router 選 top-K 個稀疏啟動</td></tr>
+      <tr><td>共享專家</td><td>shared experts</td><td>恆啟動，吸收跨領域共用知識</td></tr>
+      <tr><td>門控線性單元</td><td>SwiGLU / gated FFN</td><td>down(silu(gate(x)) * up(x))，稠密 FFN 與個別專家的積木</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="cols-2">
+<section>
+  <h2>穩定性與調適</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文</th></tr></thead>
+    <tbody>
+      <tr><td>線性非時變注入</td><td>LTI Injection</td></tr>
+      <tr><td>譜半徑</td><td>spectral radius ρ(A)</td></tr>
+      <tr><td>零階保持離散化</td><td>Zero-Order Hold (ZOH)</td></tr>
+      <tr><td>構造性保證</td><td>constructive guarantee</td></tr>
+      <tr><td>自適應計算時間</td><td>Adaptive Computation Time (ACT)</td></tr>
+      <tr><td>剩餘機率技巧</td><td>remainder trick</td></tr>
+      <tr><td>迴圈索引嵌入</td><td>loop index embedding</td></tr>
+      <tr><td>深度 LoRA 適配器</td><td>LoRA Adapter</td></tr>
+      <tr><td>夾值／箝制</td><td>clamp</td></tr>
+      <tr><td>過度思考</td><td>overthinking</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Fusion 與理論</h2>
+  <table>
+    <thead><tr><th>中文</th><th>英文</th></tr></thead>
+    <tbody>
+      <tr><td>多模型審議</td><td>multi-model deliberation</td></tr>
+      <tr><td>面板（並行模型組）</td><td>panel</td></tr>
+      <tr><td>判斷模型</td><td>judge</td></tr>
+      <tr><td>外層模型</td><td>outer model</td></tr>
+      <tr><td>結構化分析</td><td>structured analysis</td></tr>
+      <tr><td>共識／矛盾／洞見／盲區</td><td>consensus / contradictions / insights / blind_spots</td></tr>
+      <tr><td>降級處理</td><td>graceful degradation</td></tr>
+      <tr><td>遞迴保護</td><td>recursion guard</td></tr>
+      <tr><td>測試時計算擴展</td><td>test-time scaling</td></tr>
+      <tr><td>疊代收斂器</td><td>iterative convergence operator</td></tr>
+      <tr><td>BIBO 穩定</td><td>bounded-input bounded-output</td></tr>
+      <tr><td>擴展定律</td><td>scaling laws</td></tr>
+    </tbody>
+  </table>
+</section>
+</div>
+
+<div class="note">
+  <b>使用方式</b>
+  正文中首次出現的術語以「中文（English）」標注，例如「迴圈深度 Transformer（Recurrent-Depth Transformer, RDT）」。程式碼識別字（類別名、欄位名）保留原文，如 <code>MythosConfig</code>、<code>n_loops</code>、<code>LTIInjection</code>。
+</div>
